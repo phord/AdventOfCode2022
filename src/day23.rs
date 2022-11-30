@@ -13,28 +13,28 @@ const ANS1: u64 = 1;
 #[allow(unused)]
 const ANS2: u64 = 2;
 
-// #[aoc(day3, part1)]
-// fn day3_part1(_input: &'static str) -> u64 {
+// #[aoc(day23, part1)]
+// fn day23_part1(_input: &'static str) -> u64 {
 //     let inp = split_to_lines(_input);
 //     0
 // }
 
 // #[test]
-// fn test_day3_part1() {
-//     let ans = day3_part1(SAMPLE);
+// fn test_day23_part1() {
+//     let ans = day23_part1(SAMPLE);
 //     assert_eq!(ans, ANS1);
 // }
 
 //------------------------------ PART 2
 
-// #[aoc(day3, part2)]
-// fn day3_part2(_input: &'static str) -> u64 {
+// #[aoc(day23, part2)]
+// fn day23_part2(_input: &'static str) -> u64 {
 //     let inp = split_to_lines(_input);
 //     0
 // }
 
 // #[test]
-// fn test_day3_part2() {
-//     let ans = day3_part2(SAMPLE);
+// fn test_day23_part2() {
+//     let ans = day23_part2(SAMPLE);
 //     assert_eq!(ans, ANS2);
 // }
