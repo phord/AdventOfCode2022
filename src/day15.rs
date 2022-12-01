@@ -3,38 +3,50 @@ use yaah::aoc;
 #[allow(unused)]
 use crate::*;
 
+//------------------------------ PARSE INPUT
+
+fn parse(_input: &'static str) -> Vec<u64> {
+    split_to_ints(_input)
+}
+
+//------------------------------ SOLVE
+
+fn solve(_input: &'static str, _count: usize) -> usize {
+    let _inp = parse(_input);
+    _count
+}
+
+//------------------------------ PART 1
 
 #[allow(unused)]
-const SAMPLE: &str = "";
-
-#[allow(unused)]
-const ANS1: u64 = 1;
-
-#[allow(unused)]
-const ANS2: u64 = 2;
-
+// Uncomment next line when solution is ready
 // #[aoc(day15, part1)]
-// fn day15_part1(_input: &'static str) -> u64 {
-//     let inp = split_to_lines(_input);
-//     0
-// }
+fn day15_part1(_input: &'static str) -> usize {
+    solve(_input, 1)
+}
 
-// #[test]
-// fn test_day15_part1() {
-//     let ans = day15_part1(SAMPLE);
-//     assert_eq!(ans, ANS1);
-// }
+#[test]
+fn test_day15_part1() {
+    assert_eq!(day15_part1(_SAMPLE), _ANS1);
+}
 
 //------------------------------ PART 2
 
+#[allow(unused)]
+// Uncomment next line when solution is ready
 // #[aoc(day15, part2)]
-// fn day15_part2(_input: &'static str) -> u64 {
-//     let inp = split_to_lines(_input);
-//     0
-// }
+fn day15_part2(_input: &'static str) -> usize {
+    solve(_input, 2)
+}
 
-// #[test]
-// fn test_day15_part2() {
-//     let ans = day15_part2(SAMPLE);
-//     assert_eq!(ans, ANS2);
-// }
+#[test]
+fn test_day15_part2() {
+    assert_eq!(day15_part2(_SAMPLE), _ANS2);
+}
+
+//------------------------------ SAMPLE DATA
+
+const _SAMPLE: &str = "1234";
+
+const _ANS1: usize = 1;
+const _ANS2: usize = 2;

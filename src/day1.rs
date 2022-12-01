@@ -3,28 +3,7 @@ use yaah::aoc;
 #[allow(unused)]
 use crate::*;
 
-
-#[allow(unused)]
-const SAMPLE: &str = "1000
-2000
-3000
-
-4000
-
-5000
-6000
-
-7000
-8000
-9000
-
-10000";
-
-#[allow(unused)]
-const ANS1: u64 = 24000;
-
-#[allow(unused)]
-const ANS2: u64 = 45000;
+//------------------------------ PARSE INPUT
 
 // Sum numbers separated by blank lines
 fn elf_snacks(_input: &'static str) -> Vec<u64> {
@@ -47,6 +26,8 @@ fn solve(_input: &'static str, count: usize) -> u64 {
     elf.iter().take(count).sum()
 }
 
+//------------------------------ PART 1
+
 #[aoc(day1, part1)]
 fn day1_part1(_input: &'static str) -> u64 {
     solve(_input, 1)
@@ -54,8 +35,7 @@ fn day1_part1(_input: &'static str) -> u64 {
 
 #[test]
 fn test_day1_part1() {
-    let ans = day1_part1(SAMPLE);
-    assert_eq!(ans, ANS1);
+    assert_eq!(day1_part1(_SAMPLE), _ANS1);
 }
 
 //------------------------------ PART 2
@@ -67,6 +47,25 @@ fn day1_part2(_input: &'static str) -> u64 {
 
 #[test]
 fn test_day1_part2() {
-    let ans = day1_part2(SAMPLE);
-    assert_eq!(ans, ANS2);
+    assert_eq!(day1_part2(_SAMPLE), _ANS2);
 }
+
+//------------------------------ SAMPLE DATA
+
+const _SAMPLE: &str = "1000
+2000
+3000
+
+4000
+
+5000
+6000
+
+7000
+8000
+9000
+
+10000";
+
+const _ANS1: u64 = 24000;
+const _ANS2: u64 = 45000;
