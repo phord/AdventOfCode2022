@@ -5,36 +5,74 @@ use crate::*;
 
 
 #[allow(unused)]
-const SAMPLE: &str = "";
+const SAMPLE: &str = "1000
+2000
+3000
+
+4000
+
+5000
+6000
+
+7000
+8000
+9000
+
+10000";
 
 #[allow(unused)]
-const ANS1: u64 = 1;
+const ANS1: u64 = 24000;
 
 #[allow(unused)]
-const ANS2: u64 = 2;
+const ANS2: u64 = 45000;
 
-// #[aoc(day1, part1)]
-// fn day1_part1(_input: &'static str) -> u64 {
-//     let inp = split_to_lines(_input);
-//     0
-// }
+// Sum numbers separated by blank lines
+fn elf_snacks(_input: &'static str) -> Vec<u64> {
+    let inp = split_to_lines(_input);
+    let mut elf = Vec::new();
+    let mut total = 0;
+    for line in inp {
+        if line.len() > 0 {
+            let c = parse_u64(line);
+            total += c;
+        } else {
+            elf.push(total);
+            total = 0;
+        }
+    }
+    if total > 0 { elf.push(total); }
+    elf
+}
 
-// #[test]
-// fn test_day1_part1() {
-//     let ans = day1_part1(SAMPLE);
-//     assert_eq!(ans, ANS1);
-// }
+#[aoc(day1, part1)]
+fn day1_part1(_input: &'static str) -> u64 {
+    let mut elf = elf_snacks(_input);
+
+    elf.sort();
+    elf.reverse();
+    // println!("{:?}", elf);
+    elf[0]
+}
+
+#[test]
+fn test_day1_part1() {
+    let ans = day1_part1(SAMPLE);
+    assert_eq!(ans, ANS1);
+}
 
 //------------------------------ PART 2
 
-// #[aoc(day1, part2)]
-// fn day1_part2(_input: &'static str) -> u64 {
-//     let inp = split_to_lines(_input);
-//     0
-// }
+#[aoc(day1, part2)]
+fn day1_part2(_input: &'static str) -> u64 {
+    let mut elf = elf_snacks(_input);
 
-// #[test]
-// fn test_day1_part2() {
-//     let ans = day1_part2(SAMPLE);
-//     assert_eq!(ans, ANS2);
-// }
+    elf.sort();
+    elf.reverse();
+    elf[0] + elf[1] + elf[2]
+}
+
+#[test]
+fn test_day1_part2() {
+    let ans = day1_part2(SAMPLE);
+    assert_eq!(ans, ANS2);
+}
