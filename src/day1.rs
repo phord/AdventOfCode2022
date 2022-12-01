@@ -29,19 +29,13 @@ const ANS2: u64 = 45000;
 // Sum numbers separated by blank lines
 fn elf_snacks(_input: &'static str) -> Vec<u64> {
     let inp = split_to_lines(_input);
-    let mut elf = Vec::new();
-    let mut total = 0;
-    for line in inp {
-        if line.len() > 0 {
-            let c = parse_u64(line);
-            total += c;
-        } else {
-            elf.push(total);
-            total = 0;
-        }
-    }
-    if total > 0 { elf.push(total); }
-    elf
+    let elf = group_between(inp, "");
+
+    elf.iter()
+        .map(|x| x.iter()
+                  .map(|v| parse_u64(v))
+                  .sum())
+        .collect()
 }
 
 #[aoc(day1, part1)]
@@ -50,7 +44,6 @@ fn day1_part1(_input: &'static str) -> u64 {
 
     elf.sort();
     elf.reverse();
-    // println!("{:?}", elf);
     elf[0]
 }
 

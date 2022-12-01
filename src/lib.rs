@@ -77,6 +77,24 @@ pub fn split_to_ints(_input: &'static str) -> Vec<u64> {
         .collect::<Vec<u64>>()
 }
 
+#[allow(unused)]
+pub fn group_between<'a>(inp: Vec<&'a[u8]>, delim: &'static str) -> Vec<Vec<&'a[u8]>> {
+    let mut out = Vec::new();
+
+    let mut group = Vec::new();
+    for line in inp {
+        let s = as_str(&line);
+        if s == delim {
+            out.push(group.clone());
+            group.clear();
+        } else {
+            group.push(line);
+        }
+    }
+    out.push(group.clone());
+    out
+}
+
 //______________________________________________________
 //                                               PARSERS
 
