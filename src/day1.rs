@@ -38,13 +38,18 @@ fn elf_snacks(_input: &'static str) -> Vec<u64> {
         .collect()
 }
 
-#[aoc(day1, part1)]
-fn day1_part1(_input: &'static str) -> u64 {
+fn solve(_input: &'static str, count: usize) -> u64 {
     let mut elf = elf_snacks(_input);
 
     elf.sort();
     elf.reverse();
-    elf[0]
+    assert!(count <= elf.len());
+    elf.iter().take(count).sum()
+}
+
+#[aoc(day1, part1)]
+fn day1_part1(_input: &'static str) -> u64 {
+    solve(_input, 1)
 }
 
 #[test]
@@ -57,11 +62,7 @@ fn test_day1_part1() {
 
 #[aoc(day1, part2)]
 fn day1_part2(_input: &'static str) -> u64 {
-    let mut elf = elf_snacks(_input);
-
-    elf.sort();
-    elf.reverse();
-    elf[0] + elf[1] + elf[2]
+    solve(_input, 3)
 }
 
 #[test]
