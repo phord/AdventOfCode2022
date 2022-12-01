@@ -10,11 +10,20 @@ fn day1_part1(_input: &'static str) -> usize {
 }
 
 #[allow(unused)]
-static SAMPLE_DAY1: &str = "199\n200\n208\n210\n200\n207\n240\n269\n260\n263\n";
+static SAMPLE: &str = "199
+200
+208
+210
+200
+207
+240
+269
+260
+263";
 
 #[test]
 fn test_day1_part1() {
-    let ans = day1_part1(SAMPLE_DAY1);
+    let ans = day1_part1(SAMPLE);
     assert_eq!(ans, 7);
 }
 
@@ -35,6 +44,6 @@ fn day1_part2(_input: &'static str) -> u64 {
 
 #[test]
 fn test_day1_part2() {
-    let ans = day1_part2(SAMPLE_DAY1);
+    let ans = day1_part2(SAMPLE);
     assert_eq!(ans, 5);
 }
