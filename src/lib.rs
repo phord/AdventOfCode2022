@@ -42,6 +42,15 @@ pub fn split_to_lines(_input: &'static str) -> Vec<&[u8]> {
         .collect::<Vec<&[u8]>>()
 }
 
+// Split a string on any delimiter; return vector of str
+#[allow(unused)]
+pub fn split_on(_input: &'static str, delim: &'static str) -> Vec<&'static str> {
+    _input
+        .split(delim)
+        .collect::<Vec<&str>>()
+}
+
+
 // Split a string containing multiple lines into a vector of vectors of words broken on whitespace
 #[allow(unused)]
 pub fn split_to_words(_input: &'static str) -> Vec<Vec<&[u8]>> {

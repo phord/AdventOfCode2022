@@ -7,13 +7,9 @@ use crate::*;
 
 // Sum numbers separated by blank lines
 fn elf_snacks(_input: &'static str) -> Vec<u64> {
-    let inp = split_to_lines(_input);
-    let elf = group_between(inp, "");
-
-    elf.iter()
-        .map(|x| x.iter()
-                  .map(|v| parse_u64(v))
-                  .sum())
+    split_on(_input, "\n\n")
+        .iter()
+        .map(|x| split_to_ints(x).iter().sum())
         .collect()
 }
 
