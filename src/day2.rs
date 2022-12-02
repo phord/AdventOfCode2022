@@ -55,7 +55,10 @@ fn solve(_input: &'static str, part: usize) -> usize {
 
 #[aoc(day2, part1)]
 fn day2_part1(_input: &'static str) -> usize {
-    solve(_input, 1)
+    let ans = solve(_input, 1);
+    assert_eq!(ans, 12645);
+    ans
+
 }
 
 #[test]
@@ -67,7 +70,9 @@ fn test_day2_part1() {
 
 #[aoc(day2, part2)]
 fn day2_part2(_input: &'static str) -> usize {
-    solve(_input, 2)
+    let ans = solve(_input, 2);
+    assert_eq!(ans, 11756);
+    ans
 }
 
 #[test]
