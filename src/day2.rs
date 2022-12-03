@@ -2,13 +2,20 @@
 use yaah::aoc;
 #[allow(unused)]
 use crate::*;
+use itertools::Itertools;
 
 //------------------------------ PARSE INPUT
 
 fn parse(_input: &'static str) -> Vec<(usize, usize)> {
-    split_to_words(_input)
-        .iter()
-        .map(|game| ((game[0][0] - b'A') as usize, (game[1][0] - b'X') as usize) )
+    _input
+        .lines()
+        .map(|s| s.split_whitespace()
+                .map(|x| match x {
+                        "A" | "X" => 0usize,
+                        "B" | "Y" => 1usize,
+                        "C" | "Z" => 2usize,
+                        _ => panic!(),})
+                .collect_tuple().unwrap())
         .collect()
 }
 
