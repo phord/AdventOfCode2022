@@ -11,9 +11,9 @@ fn parse(_input: &'static str) -> Vec<u64> {
 
 //------------------------------ SOLVE
 
-fn solve(_input: &'static str, _count: usize) -> usize {
+fn solve(_input: &'static str, _part: usize) -> usize {
     let _inp = parse(_input);
-    _count
+    _part
 }
 
 //------------------------------ PART 1
@@ -22,7 +22,9 @@ fn solve(_input: &'static str, _count: usize) -> usize {
 // Uncomment next line when solution is ready
 // #[aoc(day12, part1)]
 fn day12_part1(_input: &'static str) -> usize {
-    solve(_input, 1)
+    let ans = solve(_input, 1);
+    // assert_eq!(ans, _);
+    ans
 }
 
 #[test]
@@ -36,7 +38,9 @@ fn test_day12_part1() {
 // Uncomment next line when solution is ready
 // #[aoc(day12, part2)]
 fn day12_part2(_input: &'static str) -> usize {
-    solve(_input, 2)
+    let ans = solve(_input, 2);
+    // assert_eq!(ans, ___);
+    ans
 }
 
 #[test]
