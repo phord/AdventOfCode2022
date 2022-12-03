@@ -13,8 +13,8 @@ yaah = "0.2.1"
 clap = { version = "4.0", features = ["derive"] }
 
 criterion = "0.4"
+itertools = "*"
 
 [[bench]]
 name = "aoc-bench"
 harness = false
-
