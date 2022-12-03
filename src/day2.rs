@@ -29,7 +29,7 @@ fn lose(them: usize) -> usize {
 fn solve(_input: &'static str, part: usize) -> usize {
     parse(_input)
         .iter()
-        .map(|(mut us, them)|
+        .map(|(them, mut us)|
         {
             let them = *them;
             if part == 2 {
