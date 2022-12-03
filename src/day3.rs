@@ -18,7 +18,7 @@ fn parse(_input: &'static str) -> Vec<Vec<usize>> {
 
 //------------------------------ SOLVE
 
-fn solve1(_input: &'static str, _part: usize) -> usize {
+fn solve1(_input: &'static str) -> usize {
     let _inp = parse(_input);
     let mut total = 0;
     for bag in _inp {
@@ -35,7 +35,7 @@ fn solve1(_input: &'static str, _part: usize) -> usize {
     total
 }
 
-fn solve2(_input: &'static str, _part: usize) -> usize {
+fn solve2(_input: &'static str) -> usize {
     let _inp = parse(_input);
     let mut total = 0;
 
@@ -64,14 +64,14 @@ fn solve2(_input: &'static str, _part: usize) -> usize {
 #[allow(unused)]
 #[aoc(day3, part1)]
 fn day3_part1(_input: &'static str) -> usize {
-    let ans = solve1(_input, 1);
+    let ans = solve1(_input);
     assert_eq!(ans, 8349);
     ans
 }
 
 #[test]
 fn test_day3_part1() {
-    assert_eq!(day3_part1(_SAMPLE), _ANS1);
+    assert_eq!(solve1(_SAMPLE), _ANS1);
 }
 
 //------------------------------ PART 2
@@ -79,14 +79,14 @@ fn test_day3_part1() {
 #[allow(unused)]
 #[aoc(day3, part2)]
 fn day3_part2(_input: &'static str) -> usize {
-    let ans = solve2(_input, 2);
+    let ans = solve2(_input);
     assert_eq!(ans, 2681);
     ans
 }
 
 #[test]
 fn test_day3_part2() {
-    assert_eq!(day3_part2(_SAMPLE), _ANS2);
+    assert_eq!(solve2(_SAMPLE), _ANS2);
 }
 
 //------------------------------ SAMPLE DATA

@@ -70,7 +70,7 @@ fn day2_part1(_input: &'static str) -> usize {
 
 #[test]
 fn test_day2_part1() {
-    assert_eq!(day2_part1(_SAMPLE), _ANS1);
+    assert_eq!(solve(_SAMPLE, 1), _ANS1);
 }
 
 //------------------------------ PART 2
@@ -84,7 +84,7 @@ fn day2_part2(_input: &'static str) -> usize {
 
 #[test]
 fn test_day2_part2() {
-    assert_eq!(day2_part2(_SAMPLE), _ANS2);
+    assert_eq!(solve(_SAMPLE, 2), _ANS2);
 }
 
 //------------------------------ SAMPLE DATA
