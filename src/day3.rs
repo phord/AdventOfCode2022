@@ -8,17 +8,12 @@ use std::iter::FromIterator;
 //------------------------------ PARSE INPUT
 
 fn parse(_input: &'static str) -> Vec<Vec<usize>> {
-    let mut sack = Vec::new();
-
-    for line in _input.lines() {
-        let row: Vec<usize> = line.as_bytes()
-                                .iter()
-                                .map(|ch| (*ch - if *ch >= b'a' {b'a' - 1} else {b'A' - 27}) as usize)
-                                .collect();
-        sack.push(row);
-    }
-
-    sack
+    _input.lines()
+        .map(|line| line.as_bytes()
+                        .iter()
+                        .map(|ch| (*ch - if *ch >= b'a' {b'a' - 1} else {b'A' - 27}) as usize)
+                        .collect())
+        .collect()
 }
 
 //------------------------------ SOLVE
