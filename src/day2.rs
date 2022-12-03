@@ -39,7 +39,7 @@ fn solve(_input: &'static str, part: usize) -> usize {
                     0 => lose(them),
                     1 => draw(them),
                     2 => win(them),
-                    _ => todo!(),
+                    _ => panic!(),
                 };
             }
 
