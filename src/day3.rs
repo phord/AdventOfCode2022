@@ -28,9 +28,9 @@ fn solve1(_input: &'static str, _part: usize) -> usize {
     let mut total = 0;
     for bag in _inp {
         let len = bag.len()/2;
-        let row2 = bag.clone();
-        let a: HashSet<usize> = bag.iter().take(len).map(|x| *x).collect();
-        let b: HashSet<usize> = row2.iter().skip(len).map(|x| *x).collect();
+        let (bag1, bag2) = bag.split_at(len);
+        let a: HashSet<usize> = bag1.iter().cloned().collect();
+        let b: HashSet<usize> = bag2.iter().cloned().collect();
 
         let baz: HashSet<&usize> = a.intersection(&b).collect();
         for b in baz {
