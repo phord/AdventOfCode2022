@@ -22,22 +22,22 @@ fn parse(_input: &'static str) -> (Vec<Vec<char>>, Vec<Vec<&'static str>>) {
     let stacks = x[0];
     let commands = x[1];
 
-    let towers: Vec<Vec<char>> = stacks.lines().rev().skip(1).map(|line|
+    let towers = stacks.lines().rev().skip(1).map(|line|
             line.chars().enumerate().filter(|(c,_)| c%4 == 1)
             .map(|(_,b)| b )
             .collect()).collect();
 
-    let towers: Vec<Vec<char>> = transpose_char(towers).iter().map(|x|
+    let towers = transpose_char(towers).iter().map(|x|
                 x.iter().filter(|x| **x != ' ')
                 .map(|x| *x).collect()).collect();
 
-    let foo = commands
+    let commands = commands
         .lines()
         .map(|s| s.split_whitespace()
                   .collect())
-        .collect::<Vec<Vec<&str>>>();
+        .collect();
 
-    (towers, foo)
+    (towers, commands)
 }
 
 //------------------------------ SOLVE
@@ -65,8 +65,6 @@ fn solve(_input: &'static str, _part: usize) -> String {
         towers[dest] = d;
     }
 
-    // dump(towers);
-
     String::from_iter(towers.iter().map(|l| l.last().unwrap()))
 }
 
@@ -83,7 +81,7 @@ fn day5_part1(_input: &'static str) -> String {
 
 #[test]
 fn test_day5_part1() {
-    assert_eq!(day5_part1(_SAMPLE), _ANS1);
+    assert_eq!(solve(_SAMPLE, 1), _ANS1);
 }
 
 //------------------------------ PART 2
@@ -99,12 +97,16 @@ fn day5_part2(_input: &'static str) -> String {
 
 #[test]
 fn test_day5_part2() {
-    assert_eq!(day5_part2(_SAMPLE), _ANS2);
+    assert_eq!(solve(_SAMPLE, 2), _ANS2);
 }
 
 //------------------------------ SAMPLE DATA
 
-const _SAMPLE: &str = "    [D]    \n[N] [C]    \n[Z] [M] [P]\n 1   2   3 \n
+const _SAMPLE: &str = "    [D]    .
+[N] [C]    .
+[Z] [M] [P].
+ 1   2   3 .
+
 move 1 from 2 to 1
 move 3 from 1 to 3
 move 2 from 2 to 1
