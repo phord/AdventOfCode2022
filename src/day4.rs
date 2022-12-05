@@ -39,8 +39,7 @@ fn solve2(_input: &'static str, _part: usize) -> usize {
 
     for (a,b,x,y) in _inp {
         if (a <= x && b>=x )
-         || (a <= y && b>=y )
-        || (x <= a && y>=b ) {
+         || (x <= a && y>=a ) {
              count += 1;
              println!("{}. {:?}", count, (a,b,x,y));
          }
@@ -85,7 +84,7 @@ const _SAMPLE: &str = "2-4,6-8
 5-7,7-9
 2-8,3-7
 6-6,4-6
-4-8,2-16";
+2-6,4-8";
 
 const _ANS1: usize = 2;
 const _ANS2: usize = 4;
