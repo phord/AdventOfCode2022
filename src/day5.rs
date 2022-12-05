@@ -5,18 +5,6 @@ use crate::*;
 
 //------------------------------ PARSE INPUT
 
-fn transpose_char(grid: Vec<Vec<char>>) -> Vec<Vec<char>> {
-    let height = grid[0].len();
-    let mut new_grid = vec![Vec::new(); height];
-
-    for line in grid.iter() {
-        for (x, cell) in line.iter().enumerate() {
-            new_grid[x].push(*cell);
-        }
-    }
-    new_grid
-}
-
 fn parse(_input: &'static str) -> (Vec<Vec<char>>, Vec<Vec<&'static str>>) {
     let x: Vec<&str> = _input.split("\n\n").collect();
     let stacks = x[0];
@@ -27,7 +15,7 @@ fn parse(_input: &'static str) -> (Vec<Vec<char>>, Vec<Vec<&'static str>>) {
             .map(|(_,b)| b )
             .collect()).collect();
 
-    let towers = transpose_char(towers).iter().map(|x|
+    let towers = transpose(towers).iter().map(|x|
                 x.iter().filter(|x| **x != ' ')
                 .map(|x| *x).collect()).collect();
 

@@ -137,12 +137,11 @@ fn parse_binary(s: &[u8]) -> u64 {
 // Transpose a grid of byte-strings
 // ** All rows must have same width.
 #[allow(unused)]
-fn transpose<'a>(grid: Vec<Vec<&'a[u8]>>) -> Vec<Vec<&'a[u8]>> {
-    let width = grid.len();
+fn transpose<T: Copy>(grid: Vec<Vec<T>>) -> Vec<Vec<T>> {
     let height = grid[0].len();
     let mut new_grid = vec![Vec::new(); height];
 
-    for (y, line) in grid.iter().enumerate() {
+    for line in grid.iter() {
         for (x, cell) in line.iter().enumerate() {
             new_grid[x].push(*cell);
         }
@@ -153,14 +152,14 @@ fn transpose<'a>(grid: Vec<Vec<&'a[u8]>>) -> Vec<Vec<&'a[u8]>> {
 // Rotate a grid of byte-strings +90 degrees clockwise
 // ** All rows must have same width.
 #[allow(unused)]
-fn rotate<'a>(grid: Vec<Vec<&'a[u8]>>) -> Vec<Vec<&'a[u8]>> {
+fn rotate<T: Copy>(grid: Vec<Vec<T>>) -> Vec<Vec<T>> {
     let ng = transpose(grid);
     mirror_vertical(ng)
 }
 
 // Mirror a grid around vertical axis
 #[allow(unused)]
-fn mirror_vertical<'a>(grid: Vec<Vec<&'a[u8]>>) -> Vec<Vec<&'a[u8]>> {
+fn mirror_vertical<T: Copy>(grid: Vec<Vec<T>>) -> Vec<Vec<T>> {
     let mut new_grid = Vec::new();
 
     for row in &grid {
@@ -173,7 +172,7 @@ fn mirror_vertical<'a>(grid: Vec<Vec<&'a[u8]>>) -> Vec<Vec<&'a[u8]>> {
 
 // Mirror a grid around horizontal axis
 #[allow(unused)]
-fn mirror_horizontal<'a>(grid: Vec<Vec<&'a[u8]>>) -> Vec<Vec<&'a[u8]>> {
+fn mirror_horizontal<T:Copy>(grid: Vec<Vec<T>>) -> Vec<Vec<T>> {
     let mut new_grid = grid.clone();
     new_grid.reverse();
     new_grid
