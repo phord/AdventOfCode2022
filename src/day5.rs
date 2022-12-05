@@ -50,19 +50,12 @@ fn solve(_input: &'static str, _part: usize) -> String {
         let src = cmd[3].parse::<usize>().unwrap()-1;
         let dest = cmd[5].parse::<usize>().unwrap()-1;
 
-        let mut d = towers[dest].clone();
+        let p = towers[src].len() - qty;
+        let mut chunk = towers[src].split_off(p);
         if _part == 1 {
-            for _ in 0..qty {
-                d.push(towers[src].pop().unwrap());
-            }
-        } else {
-            let p = towers[src].len() - qty;
-            for ch in &towers[src][p..] {
-                d.push(*ch);
-            }
-            towers[src] = towers[src][..p].to_vec();
+            chunk.reverse();
         }
-        towers[dest] = d;
+        towers[dest].append(&mut chunk);
     }
 
     String::from_iter(towers.iter().map(|l| l.last().unwrap()))
