@@ -22,9 +22,7 @@ fn parse(_input: &'static str) -> (Vec<Vec<char>>, Vec<Vec<&'static str>>) {
     let stacks = x[0];
     let commands = x[1];
 
-    let mut stacks:Vec<&str> = stacks.lines().collect();
-    stacks.reverse();
-    let towers: Vec<Vec<char>> = stacks.iter().skip(1).map(|line|
+    let towers: Vec<Vec<char>> = stacks.lines().rev().skip(1).map(|line|
             line.chars().enumerate().filter(|(c,_)| c%4 == 1)
             .map(|(_,b)| b )
             .collect()).collect();
