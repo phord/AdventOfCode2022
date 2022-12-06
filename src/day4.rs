@@ -19,14 +19,14 @@ fn parse(_input: &'static str) -> Vec<(u64,u64,u64,u64)> {
 
 fn solve(_input: &'static str, _part: usize) -> usize {
     let _inp = parse(_input);
-    println!("{:?}", _inp);
+    // println!("{:?}", _inp);
 
     let mut count = 0;
     for (a,b,x,y) in _inp {
         if (a >= x && b<=y )
          || (a <= x && b>=y ) {
             count += 1;
-            println!("{:?}", (a,b,x,y));
+            // println!("{:?}", (a,b,x,y));
          }
     }
     count
@@ -41,7 +41,7 @@ fn solve2(_input: &'static str, _part: usize) -> usize {
         if (a <= x && b>=x )
          || (x <= a && y>=a ) {
              count += 1;
-             println!("{}. {:?}", count, (a,b,x,y));
+            //  println!("{}. {:?}", count, (a,b,x,y));
          }
     }
     count
