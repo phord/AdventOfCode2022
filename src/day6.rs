@@ -9,12 +9,11 @@ use std::collections::HashSet;
 fn solve(_input: &'static str, _part: usize) -> usize {
     let len = if _part == 1 { 4 } else { 14 };
     for i in 0.._input.len() {
-        let sub: HashSet<char> = _input[i..i+len].chars().collect();
-        if sub.len() == len {
+        if HashSet::<char>::from_iter(_input[i..i+len].chars()).len() == len {
             return i+len;
         }
     }
-    0
+    panic!("No solution");
 }
 
 //------------------------------ PART 1
