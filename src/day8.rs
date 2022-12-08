@@ -11,7 +11,7 @@ fn parse(_input: &'static str) -> Vec<Vec<usize>> {
 
 //------------------------------ SOLVE
 
-fn solve(_input: &'static str, _part: usize) -> usize {
+fn solve1(_input: &'static str, _part: usize) -> usize {
     let mut _inp = parse(_input);
     let height = _inp.len();
     let width = _inp[0].len();
@@ -81,14 +81,14 @@ fn solve2(_input: &'static str, _part: usize) -> usize {
 #[allow(unused)]
 #[aoc(day8, part1)]
 fn day8_part1(_input: &'static str) -> usize {
-    let ans = solve(_input, 1);
+    let ans = solve1(_input, 1);
     // assert_eq!(ans, ___);
     ans
 }
 
 #[test]
 fn test_day8_part1() {
-    assert_eq!(solve(_SAMPLE, 1), _ANS1);
+    assert_eq!(solve1(_SAMPLE, 1), _ANS1);
 }
 
 //------------------------------ PART 2

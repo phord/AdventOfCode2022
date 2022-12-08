@@ -61,6 +61,7 @@ fn dir_sizes(item: &DirItem) -> Vec<usize> {
 }
 
 
+#[allow(unused)]
 struct State<'a> {
     files: Rc<RefCell<DirItem<'a>>>,
     path: String,

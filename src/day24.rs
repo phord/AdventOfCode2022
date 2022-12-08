@@ -5,48 +5,44 @@ use crate::*;
 
 //------------------------------ PARSE INPUT
 
-fn parse(_input: &'static str) -> Vec<u64> {
-    split_to_ints(_input)
+fn parse(input: &'static str) -> Vec<u64> {
+    split_to_ints(input)
 }
 
 //------------------------------ SOLVE
 
-fn solve(_input: &'static str, _part: usize) -> usize {
-    let _inp = parse(_input);
-    _part
+fn solve(input: &'static str, part: usize) -> usize {
+    parse(input);
+    part
 }
 
-//------------------------------ PART 1
+fn solve1(input: &'static str) -> usize { solve(input, 1) }
+fn solve2(input: &'static str) -> usize { solve(input, 2) }
+
+//------------------------------ RUNNERS
 
 #[allow(unused)]
 // Uncomment next line when solution is ready
 // #[aoc(day24, part1)]
-fn day24_part1(_input: &'static str) -> usize {
-    let ans = solve(_input, 1);
-    // assert_eq!(ans, ___);
+fn day24_part1(input: &'static str) -> usize {
+    let ans = solve1(input);
+    // assert_eq!(ans, 0);
     ans
 }
-
-#[test]
-fn test_day24_part1() {
-    assert_eq!(solve(_SAMPLE, 1), _ANS1);
-}
-
-//------------------------------ PART 2
 
 #[allow(unused)]
 // Uncomment next line when solution is ready
 // #[aoc(day24, part2)]
-fn day24_part2(_input: &'static str) -> usize {
-    let ans = solve(_input, 2);
-    // assert_eq!(ans, ___);
+fn day24_part2(input: &'static str) -> usize {
+    let ans = solve2(input);
+    // assert_eq!(ans, 0);
     ans
 }
 
-#[test]
-fn test_day24_part2() {
-    assert_eq!(solve(_SAMPLE, 2), _ANS2);
-}
+//------------------------------ TESTS
+
+#[test] fn test_day24_part1() { assert_eq!(solve1(_SAMPLE), _ANS1); }
+#[test] fn test_day24_part2() { assert_eq!(solve2(_SAMPLE), _ANS2); }
 
 //------------------------------ SAMPLE DATA
 
