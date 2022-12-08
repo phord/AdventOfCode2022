@@ -1,82 +1,35 @@
 #[allow(unused)]
 use yaah::aoc;
-#[allow(unused)]
-use crate::*;
-use std::collections::HashMap;
-use std::cell::RefCell;
-use std::rc::Rc;
 
-//------------------------------ PARSE INPUT
-#[allow(unused)]
-pub fn split_to_words(_input: &'static str) -> Vec<Vec<&str>> {
-    _input
-        .lines()
-        .map(|s| s.split_whitespace().collect())
-        .collect::<Vec<Vec<&str>>>()
-}
-
-fn parse(_input: &'static str) -> Vec<Vec<&str>> {
-    split_to_words(_input)
-}
-
-//------------------------------ SOLVE
-
-fn get_state(_input: &'static str) -> Vec<usize> {
-    let _inp = parse(_input);
-
-    // Ingest the input
+fn get_dir_sizes(_input: &'static str) -> Vec<usize> {
     let mut size = Vec::new();
     let mut stack = Vec::new();
-    for line in _inp {
-        match line[0] {
-            "$" => {
-                match line[1] {
-                    "cd" => {
-                        if line[2] == ".." {
-                            let subdir_size = stack.pop().unwrap();
-                            *stack.last_mut().unwrap() += subdir_size;
-                            size.push(subdir_size);
-                        } else {
-                            // Descend into subdir
-                            stack.push(0);
-                        }
-                    },
-                    "ls" => { }
-                    _ => panic!("Unknown command: {:?}", line)
-                };
-
-            },
-            "dir" => { /* IGNORED */},
-            x     => { // File size; accumulate in current dir
-                *stack.last_mut().unwrap() += x.parse::<usize>().unwrap();
-            }
-            _ => panic!("Not handled: {:?}", line),
+    for line in _input.lines() {
+        if line.starts_with("$ cd ..") {
+            let subdir_size = stack.pop().unwrap();
+            *stack.last_mut().unwrap() += subdir_size;
+            size.push(subdir_size);
+        } else if line.starts_with("$ cd ") {
+            stack.push(0);
+        } else if let Ok(file_size) = line.split(" ").next().unwrap().parse::<usize>() {
+            *stack.last_mut().unwrap() += file_size;
         }
     }
 
-    let mut subdir_size = 0;
-    for s in stack.iter().rev() {
-        subdir_size += s;
-        size.push(subdir_size);
-    }
+    stack.iter().rev().fold(0, |sum, &val| { size.push(sum + val); sum + val });
     size
 }
 
 fn solve(_input: &'static str, _part: usize) -> usize {
-    let state = get_state(_input);
-    if _part==1 {
-        let ans = state.iter().filter(|x| **x <= 100000usize).sum();
-        return ans;
+    let sizes = get_dir_sizes(_input);
+    if _part == 1 {
+        sizes.iter().filter(|x| **x <= 100000usize).sum()
     } else {
-        let space = 70000000;
-        let need = 30000000;
-        let sizes = state;
-        let used = sizes.iter().max().unwrap();
-        let unused = space - *used;
-        let need = need - unused;
-
-        let ans:usize = *sizes.iter().filter(|x| **x >= need).min().unwrap();
-        ans
+        let space = 70_000_000;
+        let need = 30_000_000;
+        let used = *sizes.iter().max().unwrap();
+        let need = need + used - space;
+        *sizes.iter().filter(|x| **x >= need).min().unwrap()
     }
 }
 
