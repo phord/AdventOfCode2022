@@ -11,7 +11,7 @@ fn parse(_input: &'static str) -> Vec<Vec<usize>> {
 
 //------------------------------ SOLVE
 
-fn solve1(_input: &'static str, _part: usize) -> usize {
+fn solve1(_input: &'static str) -> usize {
     let mut _inp = parse(_input);
     let height = _inp.len();
     let width = _inp[0].len();
@@ -35,45 +35,36 @@ fn solve1(_input: &'static str, _part: usize) -> usize {
     found.iter().map(|row| row.iter().sum::<usize>()).sum()
 }
 
-fn solve2(_input: &'static str, _part: usize) -> usize {
-    let mut _inp = parse(_input);
-    let height = _inp.len();
-    let width = _inp[0].len();
+fn solve2(_input: &'static str) -> usize {
+    let mut grid = parse(_input);
+    let height = grid.len();
+    let width = grid[0].len();
 
-    let mut measured = vec![vec![0usize; 4]; width*height];
-    let mut index = vec![vec![0; width]; height];
-
-    let mut n = 0;
-    for i in 0..height {
-        for j in 0..width {
-            index[i][j] = n;
-            n += 1;
-        }
-    }
+    let mut measured = vec![vec![vec![0usize; 4]; width]; height];
 
     for angle in 0..4 {
-        for (y, row) in _inp.iter().enumerate() {
+        for (y, row) in grid.iter().enumerate() {
             let mut distance = vec![0; 10];
-            for (x,c) in row.iter().enumerate() {
-                let n = index[y][x];
-                measured[n][angle] = distance[*c];
-                // println!("{:?}", (x, y, *c, &distance, &measured[n]));
-                for d in 0..10 {
+            for (x, &height) in row.iter().enumerate() {
+                measured[y][x][angle] = distance[height];
+                for d in height+1..10 {
                     distance[d] += 1;
-                    if *c >= d {distance[d] = 1; }
+                }
+                for d in 0..height+1 {
+                    distance[d] = 1;
                 }
             }
         }
-        _inp = rotate(_inp);
-        index = rotate(index);
+        grid = rotate(grid);
+        measured = rotate(measured);
     }
 
-    // dbg!(&measured);
-
-    let measured: Vec<usize> = measured.iter().map(|x| x.iter().product()).collect();
-
-    // dbg!(&measured);
-    *measured.iter().max().unwrap()
+    measured
+        .iter().map(|y|
+            y.iter().map(|x|
+                x.iter().product())
+            .max().unwrap())
+        .max().unwrap()
 }
 
 //------------------------------ PART 1
@@ -81,14 +72,14 @@ fn solve2(_input: &'static str, _part: usize) -> usize {
 #[allow(unused)]
 #[aoc(day8, part1)]
 fn day8_part1(_input: &'static str) -> usize {
-    let ans = solve1(_input, 1);
-    // assert_eq!(ans, ___);
+    let ans = solve1(_input);
+    assert_eq!(ans, 1698);
     ans
 }
 
 #[test]
 fn test_day8_part1() {
-    assert_eq!(solve1(_SAMPLE, 1), _ANS1);
+    assert_eq!(solve1(_SAMPLE), _ANS1);
 }
 
 //------------------------------ PART 2
@@ -96,14 +87,14 @@ fn test_day8_part1() {
 #[allow(unused)]
 #[aoc(day8, part2)]
 fn day8_part2(_input: &'static str) -> usize {
-    let ans = solve2(_input, 2);
-    // assert_eq!(ans, ___);
+    let ans = solve2(_input);
+    assert_eq!(ans, 672280);
     ans
 }
 
 #[test]
 fn test_day8_part2() {
-    assert_eq!(solve2(_SAMPLE, 2), _ANS2);
+    assert_eq!(solve2(_SAMPLE), _ANS2);
 }
 
 //------------------------------ SAMPLE DATA

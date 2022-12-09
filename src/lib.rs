@@ -136,14 +136,15 @@ fn parse_binary(s: &[u8]) -> u64 {
 
 // Transpose a grid of byte-strings
 // ** All rows must have same width.
+// FIXME: Remove the Clone requirement
 #[allow(unused)]
-fn transpose<T: Copy>(grid: Vec<Vec<T>>) -> Vec<Vec<T>> {
+fn transpose<T: Clone>(grid: Vec<Vec<T>>) -> Vec<Vec<T>> {
     let height = grid[0].len();
-    let mut new_grid = vec![Vec::new(); height];
+    let mut new_grid = vec![vec![]; height];
 
-    for line in grid.iter() {
-        for (x, cell) in line.iter().enumerate() {
-            new_grid[x].push(*cell);
+    for line in grid.into_iter() {
+        for (x, cell) in line.into_iter().enumerate() {
+            new_grid[x].push(cell);
         }
     }
     new_grid
@@ -152,22 +153,25 @@ fn transpose<T: Copy>(grid: Vec<Vec<T>>) -> Vec<Vec<T>> {
 // Rotate a grid of byte-strings +90 degrees clockwise
 // ** All rows must have same width.
 #[allow(unused)]
-fn rotate<T: Copy>(grid: Vec<Vec<T>>) -> Vec<Vec<T>> {
-    let ng = transpose(grid);
-    mirror_vertical(ng)
+fn rotate<T: Clone>(v: Vec<Vec<T>>) -> Vec<Vec<T>> {
+    assert!(!v.is_empty());
+    let len = v[0].len();
+    let mut iters: Vec<_> = v.into_iter().map(|n| n.into_iter()).collect();
+    (0..len)
+        .map(|_| {
+            iters
+                .iter_mut()
+                .map(|n| n.next().unwrap())
+                .rev()
+                .collect::<Vec<T>>()
+        })
+        .collect()
 }
 
 // Mirror a grid around vertical axis
 #[allow(unused)]
-fn mirror_vertical<T: Copy>(grid: Vec<Vec<T>>) -> Vec<Vec<T>> {
-    let mut new_grid = Vec::new();
-
-    for row in &grid {
-        let mut r = row.clone();
-        r.reverse();
-        new_grid.push(r);
-    }
-    new_grid
+fn mirror_vertical<T>(grid: Vec<Vec<T>>) -> Vec<Vec<T>> {
+    grid.into_iter().map(|row| row.into_iter().rev().collect()).collect()
 }
 
 // Mirror a grid around horizontal axis
