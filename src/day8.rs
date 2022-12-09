@@ -32,7 +32,7 @@ fn solve1(_input: &'static str) -> usize {
         }
         _inp = rotate(_inp);
     }
-    found.iter().map(|row| row.iter().sum::<usize>()).sum()
+    found.iter().flatten().sum()
 }
 
 fn solve2(_input: &'static str) -> usize {
@@ -59,11 +59,7 @@ fn solve2(_input: &'static str) -> usize {
         measured = rotate(measured);
     }
 
-    measured
-        .iter().map(|y|
-            y.iter().map(|x|
-                x.iter().product())
-            .max().unwrap())
+    measured.iter().flatten().map(|x| x.iter().product())
         .max().unwrap()
 }
 
