@@ -6,7 +6,7 @@ use yaah::aoc;
 fn parse_to_timeline(input: &'static str) -> Vec<i32> {
     let mut reg = 1;
     input.lines()
-        .map(|line| {
+        .flat_map(|line| {
             if line.starts_with("noop") { vec![reg] }
             else if line.starts_with("addx") {
                 let x = vec![reg, reg];
@@ -15,17 +15,14 @@ fn parse_to_timeline(input: &'static str) -> Vec<i32> {
             } else {
                 panic!("Unexpected: {}", line);
             }
-        }).flatten().collect()
+        }).collect()
 }
 
 //------------------------------ SOLVE
 
 fn solve(input: &'static str) -> (i32, String) {
     let inp = parse_to_timeline(input);
-    let sum = inp.iter().enumerate().filter_map(|(i,x)| {
-            let i = (i + 1) as i32;
-            if i % 40 == 20 {Some(x*i)} else {None}
-        }).sum();
+    let sum = (20..=220).step_by(40).map(|i| inp[i-1] * (i as i32)).sum();
     let screen = inp.iter().enumerate()
                     .flat_map(|(i,x)| {
                         let i = (i % 40) as i32;
@@ -41,6 +38,7 @@ fn solve(input: &'static str) -> (i32, String) {
 #[allow(unused)]
 #[aoc(day10, part1)]
 fn day10_part1(input: &'static str) -> i32 {
+    dbg!(parse_to_timeline(_SAMPLE0));
     let ans = solve(input);
     assert_eq!(ans, (13060, SOLN.to_string()));
     0
