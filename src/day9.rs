@@ -8,9 +8,8 @@ use std::collections::HashSet;
 
 fn parse(input: &'static str) -> Vec<(&str, usize)> {
     input.lines()
-        .map(|line| {
-            let words: Vec<&str> = line.split(" ").collect();
-            (words[0], words[1].parse::<usize>().unwrap())} ).collect()
+        .flat_map(|line| line.split_once(' ')
+            .and_then(|(d, n)| Some((d, n.parse::<usize>().unwrap())) )).collect()
 }
 
 //------------------------------ SOLVE
@@ -73,6 +72,7 @@ fn solve(input: &'static str, part: usize) -> usize {
     visited.len()
 }
 
+#[allow(unused)]
 fn print(vx: &Vec<i32>, vy: &Vec<i32>) {
     let dy = -4..1;
     // let dy = -15..6;
