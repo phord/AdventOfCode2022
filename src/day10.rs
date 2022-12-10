@@ -3,52 +3,37 @@ use yaah::aoc;
 
 //------------------------------ PARSE INPUT
 
-fn parse(input: &'static str) -> Vec<(&str, i32)> {
+fn parse_to_timeline(input: &'static str) -> Vec<i32> {
+    let mut reg = 1;
     input.lines()
         .map(|line| {
-            let x: Vec<&str> = line.split(" ").collect();
-            if x.len() < 2 {(x[0], 0)} else {(x[0], x[1].parse().unwrap())}
-        })
-        .collect()
+            if line.starts_with("noop") { vec![reg] }
+            else if line.starts_with("addx") {
+                let x = vec![reg, reg];
+                reg += line[5..].parse::<i32>().unwrap();
+                x
+            } else {
+                panic!("Unexpected: {}", line);
+            }
+        }).flatten().collect()
 }
 
 //------------------------------ SOLVE
 
 fn solve(input: &'static str) -> (i32, String) {
-    let mut reg_x = 1;
-    let mut cycle = 0;
-    let mut sum = 0;
+    let inp = parse_to_timeline(input);
+    let sum = inp.iter().enumerate().filter_map(|(i,x)| {
+            let i = (i + 1) as i32;
+            if i % 40 == 20 {Some(x*i)} else {None}
+        }).sum();
+    let screen = inp.iter().enumerate()
+                    .flat_map(|(i,x)| {
+                        let i = (i % 40) as i32;
+                        [   if i == 0 {"\n"} else {""},
+                            if (x-i).abs() <= 1 {"#"} else {"."},
+                        ]}).collect::<String>();
 
-    let mut pos = 0;
-    let mut screen: String = "\n".to_string();
-
-    for op in parse(input) {
-        #[allow(unused)]
-        let mut cycles = 0;
-        let mut next_x = reg_x;
-        match op {
-            ("noop", _) => cycles = 1,
-            ("addx", value) => { cycles = 2; next_x = reg_x + value; }
-            _ => panic!("Unknown opcode {:?}", op),
-        };
-
-        for _ in 0..cycles {
-            screen += if (reg_x-pos).abs() < 2 { "#" } else {"."};
-            cycle += 1;
-            pos += 1;
-            if pos % 40 == 0 {
-                screen += "\n";
-                pos = 0;
-            }
-
-            if cycle % 40 == 20 {
-                sum += cycle * reg_x;
-            }
-        }
-        reg_x = next_x;
-    }
-    // println!("{}", screen);
-    (sum, screen)
+    (sum, screen+"\n")
 }
 
 //------------------------------ RUNNERS
