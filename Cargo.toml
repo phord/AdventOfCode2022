@@ -11,6 +11,7 @@ license = "MIT/Apache-2.0"
 [dependencies]
 yaah = "0.2.1"
 clap = { version = "4.0", features = ["derive"] }
+num = "0.4"
 
 criterion = "0.4"
 itertools = "*"
