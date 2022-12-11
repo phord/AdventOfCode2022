@@ -38,7 +38,7 @@ fn solve(input: &'static str) -> (i32, String) {
 #[allow(unused)]
 #[aoc(day10, part1)]
 fn day10_part1(input: &'static str) -> i32 {
-    dbg!(parse_to_timeline(_SAMPLE0));
+    // dbg!(parse_to_timeline(_SAMPLE0));
     let ans = solve(input);
     assert_eq!(ans, (13060, SOLN.to_string()));
     0
