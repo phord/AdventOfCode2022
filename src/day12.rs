@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::HashMap;
 
 #[allow(unused)]
 use yaah::aoc;
@@ -18,15 +18,16 @@ fn height(grid: &Vec<&[u8]>, pos: (usize, usize)) -> u8 {
     let (x, y) = pos;
     let c = grid[y][x];
     match c {
-        b'E' => b'z' + 1,
-        b'S' => b'a' - 1,
+        b'E' => b'z',
+        b'S' => b'a',
         _ => c,
     }
 }
 
 fn finish(grid: &Vec<&[u8]>, pos: (usize, usize)) -> bool {
     let (x, y) = pos;
-    b'E' == grid[y][x]
+    b'S' == grid[y][x]      // part 1
+    || b'a' == grid[y][x]   // part 2
 }
 
 fn move_to(grid: &Vec<&[u8]>, pos: (usize, usize), dir: (i32, i32)) -> Option<(usize, usize)> {
@@ -46,8 +47,8 @@ fn move_to(grid: &Vec<&[u8]>, pos: (usize, usize), dir: (i32, i32)) -> Option<(u
         None
     } else {
         let new = ((x as i32 + dx) as usize, (y as i32 + dy) as usize);
-        let c = height(grid, pos);
-        let d = height(grid, new);
+        let d = height(grid, pos);
+        let c = height(grid, new);
         if d > c + 1 {
             None
         } else {
@@ -56,25 +57,28 @@ fn move_to(grid: &Vec<&[u8]>, pos: (usize, usize), dir: (i32, i32)) -> Option<(u
     }
 }
 
-#[test] fn test_day12_part1() { assert_eq!(solve1(_SAMPLE), _ANS1); }
+fn nav(grid: &Vec<&[u8]>, pos: (usize, usize), depth: usize, visited: &mut HashMap<(usize, usize), usize>) -> Option<usize> {
 
+    if let Some(&d) = visited.get(&pos) {
+        if d <= depth {
+            return None;
+        }
+    }
 
-fn nav(grid: &Vec<&[u8]>, pos: (usize, usize), visited: HashSet<(usize, usize)>) -> Option<usize> {
+    // println!("{}", visited.len());
+    visited.insert(pos, depth);
 
     if finish(grid, pos) {
-        // println!("================= FINISH {} ==================", visited.len());
-        Some(visited.len())
+        // println!("================= FINISH {} ==================", depth);
+        Some(depth)
     } else {
         let distance:Vec<Option<usize>> = [(-1,0), (1,0), (0,-1), (0,1)].iter().map(|dir| {
             // println!("Distance: {:?}", dir);
             match move_to(grid, pos, *dir) {
                 Some(new) => {
-                    if !visited.contains(&new) {
-                        // println!("Pos {:?} Depth: {}  Visit: {:?}", &pos, visited.len(), &new);
-                        let mut visited = visited.clone();  // Seems expensive
-                        visited.insert(pos);
-                        nav(grid, new, visited)
-                    } else {None}
+                    // println!("Pos {:?} Depth: {}  Visit: {:?}", &pos, visited.len(), &new);
+                    // let mut visited = visited.clone();  // Seems expensive
+                    nav(grid, new, depth+1, visited)
                 },
                 None => None,
             }
@@ -96,7 +100,7 @@ fn solve(input: &'static str, _part: usize) -> usize {
 
     for (y,row) in grid.iter().enumerate() {
         for (x,col) in row.iter().enumerate() {
-            if *col == b'S' {
+            if *col == b'E' {
                 pos = (x,y)
             }
         }
@@ -104,7 +108,8 @@ fn solve(input: &'static str, _part: usize) -> usize {
 
     println!("Start: {:?}", &pos);
 
-    if let Some(dist) = nav(&grid, pos, HashSet::new()) {
+    let mut visited = HashMap::new();
+    if let Some(dist) = nav(&grid, pos, 0, &mut visited) {
         dist
     } else {
         panic!("No solution found");
@@ -135,6 +140,7 @@ fn day12_part2(input: &'static str) -> usize {
 
 //------------------------------ TESTS
 
+//#[test] fn test_day12_part1() { assert_eq!(solve1(_SAMPLE), _ANS1); }
 #[test] fn test_day12_part2() { assert_eq!(solve2(_SAMPLE), _ANS2); }
 
 //------------------------------ SAMPLE DATA
@@ -146,4 +152,4 @@ acctuvwj
 abdefghi";
 
 const _ANS1: usize = 31;
-const _ANS2: usize = 2;
+const _ANS2: usize = 29;
