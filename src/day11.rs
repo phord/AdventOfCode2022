@@ -16,6 +16,7 @@ struct Monkey {
     fmon: usize,
 }
 
+#[allow(unused)]
 fn sample() -> Vec<Monkey> {
     vec![
         Monkey {
@@ -119,6 +120,7 @@ fn solve(input: &'static str, part: usize) -> u64 {
 
     let mut count: Vec<u64> = vec![0; items.len()];
 
+    #[allow(unused)]
     for round in 0..if part==1 {20} else {10000} {
         for turn in 0..gang.len() {
             let m = &gang[turn];
