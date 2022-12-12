@@ -8,13 +8,15 @@ use crate::*;
 //------------------------------ PARSE INPUT
 
 fn parse(input: &'static str) -> Vec<&[u8]> {
-    input.lines()
-        .map(|x| x.as_bytes()).collect()
+    input
+        .lines()
+        .map(|x| x.as_bytes())
+        .collect()
 }
 
 //------------------------------ SOLVE
 
-fn height(grid: &Vec<&[u8]>, pos: (usize, usize)) -> u8 {
+fn elevation(grid: &Vec<&[u8]>, pos: (usize, usize)) -> u8 {
     let (x, y) = pos;
     let c = grid[y][x];
     match c {
@@ -30,12 +32,17 @@ fn finish(grid: &Vec<&[u8]>, pos: (usize, usize)) -> bool {
     || b'a' == grid[y][x]   // part 2
 }
 
-fn move_to(grid: &Vec<&[u8]>, pos: (usize, usize), dir: (i32, i32)) -> Option<(usize, usize)> {
+fn move_to(grid: &Vec<&[u8]>, pos: (usize, usize), dir: &Dir) -> Option<(usize, usize)> {
     let (x, y) = pos;
-    let (dx, dy) = dir;
     let h = grid.len();
     let w = grid[0].len();
 
+    let (dx, dy) = match dir {
+        Dir::Left => (-1, 0),
+        Dir::Right => (1, 0),
+        Dir::Up => (0, -1),
+        Dir::Down => (0, 1),
+    };
 
     if x == 0 && dx == -1 {
         None
@@ -47,8 +54,8 @@ fn move_to(grid: &Vec<&[u8]>, pos: (usize, usize), dir: (i32, i32)) -> Option<(u
         None
     } else {
         let new = ((x as i32 + dx) as usize, (y as i32 + dy) as usize);
-        let d = height(grid, pos);
-        let c = height(grid, new);
+        let d = elevation(grid, pos);
+        let c = elevation(grid, new);
         if d > c + 1 {
             None
         } else {
@@ -57,37 +64,43 @@ fn move_to(grid: &Vec<&[u8]>, pos: (usize, usize), dir: (i32, i32)) -> Option<(u
     }
 }
 
-fn nav(grid: &Vec<&[u8]>, pos: (usize, usize), depth: usize, visited: &mut HashMap<(usize, usize), usize>) -> Option<usize> {
+enum Dir {
+    Up,
+    Down,
+    Left,
+    Right,
+}
 
+fn better_path(pos: (usize, usize), depth: usize, visited: &mut HashMap<(usize, usize), usize>) -> bool {
     if let Some(&d) = visited.get(&pos) {
         if d <= depth {
-            return None;
+            return false;
         }
     }
-
-    // println!("{}", visited.len());
     visited.insert(pos, depth);
+    true
+}
 
-    if finish(grid, pos) {
-        // println!("================= FINISH {} ==================", depth);
+fn nav(grid: &Vec<&[u8]>, pos: (usize, usize), depth: usize, visited: &mut HashMap<(usize, usize), usize>) -> Option<usize> {
+    if !better_path(pos, depth, visited) {
+        None
+    } else if finish(grid, pos) {
         Some(depth)
     } else {
-        let distance:Vec<Option<usize>> = [(-1,0), (1,0), (0,-1), (0,1)].iter().map(|dir| {
-            // println!("Distance: {:?}", dir);
-            match move_to(grid, pos, *dir) {
+        let distance:Vec<Option<usize>> = [Dir::Up, Dir::Down, Dir::Left, Dir::Right].iter().map(|dir| {
+            match move_to(grid, pos, dir) {
                 Some(new) => {
-                    // println!("Pos {:?} Depth: {}  Visit: {:?}", &pos, visited.len(), &new);
-                    // let mut visited = visited.clone();  // Seems expensive
                     nav(grid, new, depth+1, visited)
                 },
                 None => None,
             }
         }).collect();
 
-        // dbg!(&distance);
-
-        let distance: Vec<usize> = distance.iter().filter(|x| x.is_some()).map(|x| x.unwrap()).collect();
-
+        let distance: Vec<usize> = distance
+            .iter()
+            .filter(|x| x.is_some())
+            .map(|x| x.unwrap())
+            .collect();
         distance.iter().cloned().min()
     }
 }
@@ -105,8 +118,6 @@ fn solve(input: &'static str, _part: usize) -> usize {
             }
         }
     }
-
-    println!("Start: {:?}", &pos);
 
     let mut visited = HashMap::new();
     if let Some(dist) = nav(&grid, pos, 0, &mut visited) {
@@ -130,8 +141,7 @@ fn day12_part1(input: &'static str) -> usize {
 }
 
 #[allow(unused)]
-// Uncomment next line when solution is ready
-// #[aoc(day12, part2)]
+#[aoc(day12, part2)]
 fn day12_part2(input: &'static str) -> usize {
     let ans = solve2(input);
     // assert_eq!(ans, 0);
