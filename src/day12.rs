@@ -28,8 +28,7 @@ fn elevation(grid: &Vec<&[u8]>, pos: (usize, usize)) -> u8 {
 
 fn finish(grid: &Vec<&[u8]>, pos: (usize, usize)) -> bool {
     let (x, y) = pos;
-    b'S' == grid[y][x]      // part 1
-    || b'a' == grid[y][x]   // part 2
+    b'S' == grid[y][x]
 }
 
 fn move_to(grid: &Vec<&[u8]>, pos: (usize, usize), dir: &Dir) -> Option<(usize, usize)> {
@@ -106,7 +105,7 @@ fn nav(grid: &Vec<&[u8]>, pos: (usize, usize), depth: usize, visited: &mut HashM
 }
 
 
-fn solve(input: &'static str, _part: usize) -> usize {
+fn solve(input: &'static str, part: usize) -> usize {
     let grid = parse(input);
 
     let mut pos = (0usize,0usize);
@@ -120,11 +119,15 @@ fn solve(input: &'static str, _part: usize) -> usize {
     }
 
     let mut visited = HashMap::new();
-    if let Some(dist) = nav(&grid, pos, 0, &mut visited) {
-        dist
-    } else {
-        panic!("No solution found");
-    }
+    nav(&grid, pos, 0, &mut visited);
+
+    let search = if part == 2 { |x| x==b'S' || x==b'a' } else { |x| x==b'S' };
+    let it = visited.iter()
+        .filter(|((x,y), _)| search(grid[*y][*x]))
+        .map(|(_, dist)| dist)
+        .min()
+        .unwrap();
+    *it
 }
 
 fn solve1(input: &'static str) -> usize { solve(input, 1) }
@@ -136,7 +139,7 @@ fn solve2(input: &'static str) -> usize { solve(input, 2) }
 #[aoc(day12, part1)]
 fn day12_part1(input: &'static str) -> usize {
     let ans = solve1(input);
-    // assert_eq!(ans, 0);
+    assert_eq!(ans, 339);
     ans
 }
 
@@ -144,13 +147,13 @@ fn day12_part1(input: &'static str) -> usize {
 #[aoc(day12, part2)]
 fn day12_part2(input: &'static str) -> usize {
     let ans = solve2(input);
-    // assert_eq!(ans, 0);
+    assert_eq!(ans, 332);
     ans
 }
 
 //------------------------------ TESTS
 
-//#[test] fn test_day12_part1() { assert_eq!(solve1(_SAMPLE), _ANS1); }
+#[test] fn test_day12_part1() { assert_eq!(solve1(_SAMPLE), _ANS1); }
 #[test] fn test_day12_part2() { assert_eq!(solve2(_SAMPLE), _ANS2); }
 
 //------------------------------ SAMPLE DATA
