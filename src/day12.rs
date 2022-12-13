@@ -87,13 +87,8 @@ fn nav(grid: &Vec<&[u8]>, pos: (usize, usize), depth: usize, visited: &mut HashM
         Some(depth)
     } else {
         let dirs:Vec<Dir> = vec![Dir::Up, Dir::Down, Dir::Left, Dir::Right];
-        dirs.iter().map(|dir| {
-            match move_to(grid, pos, dir) {
-                Some(new) => nav(grid, new, depth+1, visited),
-                None => None,
-            }
-        }).filter(|x| x.is_some())
-            .map(|x| x.unwrap())
+        dirs.iter().flat_map(|dir| move_to(grid, pos, dir))
+            .flat_map(|new| nav(grid, new, depth+1, visited))
             .min()
     }
 }
