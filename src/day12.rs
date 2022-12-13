@@ -86,21 +86,15 @@ fn nav(grid: &Vec<&[u8]>, pos: (usize, usize), depth: usize, visited: &mut HashM
     } else if finish(grid, pos) {
         Some(depth)
     } else {
-        let distance:Vec<Option<usize>> = [Dir::Up, Dir::Down, Dir::Left, Dir::Right].iter().map(|dir| {
+        let dirs:Vec<Dir> = vec![Dir::Up, Dir::Down, Dir::Left, Dir::Right];
+        dirs.iter().map(|dir| {
             match move_to(grid, pos, dir) {
-                Some(new) => {
-                    nav(grid, new, depth+1, visited)
-                },
+                Some(new) => nav(grid, new, depth+1, visited),
                 None => None,
             }
-        }).collect();
-
-        let distance: Vec<usize> = distance
-            .iter()
-            .filter(|x| x.is_some())
+        }).filter(|x| x.is_some())
             .map(|x| x.unwrap())
-            .collect();
-        distance.iter().cloned().min()
+            .min()
     }
 }
 
@@ -119,15 +113,18 @@ fn solve(input: &'static str, part: usize) -> usize {
     }
 
     let mut visited = HashMap::new();
-    nav(&grid, pos, 0, &mut visited);
+    let part1 = nav(&grid, pos, 0, &mut visited);
 
-    let search = if part == 2 { |x| x==b'S' || x==b'a' } else { |x| x==b'S' };
-    let it = visited.iter()
-        .filter(|((x,y), _)| search(grid[*y][*x]))
-        .map(|(_, dist)| dist)
-        .min()
-        .unwrap();
-    *it
+    if part == 1 {
+        part1.unwrap()
+    } else {
+        let it = visited.iter()
+            .filter(|((x,y), _)| { let c = grid[*y][*x]; c == b'S' || c == b'a'})
+            .map(|(_, dist)| dist)
+            .min()
+            .unwrap();
+        *it
+    }
 }
 
 fn solve1(input: &'static str) -> usize { solve(input, 1) }
