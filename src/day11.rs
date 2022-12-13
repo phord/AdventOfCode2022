@@ -219,5 +219,5 @@ fn day11_part2(input: &'static str) -> u64 {
 
 const _SAMPLE: &str = "1234";
 
-const _ANS1: u64 = 1;
-const _ANS2: u64 = 2;
+const _ANS1: u64 = 50830;
+const _ANS2: u64 = 14399640002;
