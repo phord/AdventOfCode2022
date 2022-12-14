@@ -4,19 +4,16 @@ use yaah::aoc;
 use crate::*;
 use fnv::FnvHashSet;
 
-//------------------------------ PARSE INPUT
-
-
-type Point = (usize, usize);
+type Point = (i32, i32);
 type Grid = FnvHashSet<Point>;
 
 #[allow(unused)]
-fn sample() -> Vec<Vec<(usize, usize)>> {
+fn sample() -> Vec<Vec<(i32, i32)>> {
     vec![vec![(498,4 ), ( 498,6 ), ( 496,6 )],
     vec![(503,4 ), ( 502,4 ), ( 502,9 ), ( 494,9)]]
 }
 
-fn parse(sample: &Vec<Vec<(usize, usize)>>) -> Grid {
+fn parse(sample: &Vec<Vec<(i32, i32)>>) -> Grid {
 
     let mut g = Grid::default();
     for line in sample {
@@ -40,41 +37,32 @@ fn parse(sample: &Vec<Vec<(usize, usize)>>) -> Grid {
 }
 
 //------------------------------ SOLVE
-fn fall(g: &mut Grid, max: &usize, path: &mut Vec<Point>, part: usize) -> bool {
+fn fall(g: &mut Grid, max: &i32, path: &mut Vec<Point>, part: usize) -> bool {
     let (mut x, mut y) = path.pop().unwrap_or((500,0));
     if g.contains(&(x,y)) {
         return false;
     }
 
     loop {
-        path.push((x,y));
-        assert!( y < *max+2 );
-
         if y > *max {
-            // Fall into the abyss or on the floor (part2)
-            if part == 1 {
-                path.pop();
+            if part == 1 {          // part 1: Fall into the abyss
                 return false;
             }
-            // part 2: hit the infinitely wide floor
-            break;
-        } else if !g.contains(&(x,y+1)) {
-            y += 1;
-        } else if x > 0 && !g.contains(&(x-1,y+1)) {
-            y += 1;
-            x -= 1;
-        } else if !g.contains(&(x+1,y+1)) {
-            y += 1;
-            x += 1;
-        } else {
-            // Hit the floor
-            break;
+            break;                  // part 2: hit the infinitely wide floor
         }
+
+        let prev = (x,y);
+        match [ 0, -1, 1 ].iter().find(|dx| !g.contains(&(x + *dx,y + 1))) {
+            None => break,
+            Some(dx) => x += dx,
+        }
+        y += 1;
+        path.push(prev);
     }
-    path.pop();
     g.insert((x,y));
     return true;
 }
+
 fn solve(g:Grid, part: usize) -> usize {
 
     let max = g.iter().map(|(_,b)| b).max().unwrap();
@@ -115,7 +103,7 @@ fn day14_part2(_: &'static str) -> usize {
 #[test] fn test_day14_part1() { assert_eq!(solve1(parse(&sample())), 24); }
 #[test] fn test_day14_part2() { assert_eq!(solve2(parse(&sample())), 93); }
 
-fn input() -> Vec<Vec<(usize, usize)>> {
+fn input() -> Vec<Vec<(i32, i32)>> {
     vec![
             vec![(480,150), (485,150)],
             vec![(459,100), (464,100)],
