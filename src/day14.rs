@@ -2,12 +2,13 @@
 use yaah::aoc;
 #[allow(unused)]
 use crate::*;
-use std::collections::HashSet;
+use fnv::FnvHashSet;
 
 //------------------------------ PARSE INPUT
 
 
-type Grid = HashSet<(usize, usize)>;
+type Point = (usize, usize);
+type Grid = FnvHashSet<Point>;
 
 #[allow(unused)]
 fn sample() -> Vec<Vec<(usize, usize)>> {
@@ -17,7 +18,7 @@ fn sample() -> Vec<Vec<(usize, usize)>> {
 
 fn parse(sample: &Vec<Vec<(usize, usize)>>) -> Grid {
 
-    let mut g = Grid::new();
+    let mut g = Grid::default();
     for line in sample {
         let mut start = line[0];
         for next in line {
@@ -39,28 +40,25 @@ fn parse(sample: &Vec<Vec<(usize, usize)>>) -> Grid {
 }
 
 //------------------------------ SOLVE
-fn fall(g: &mut Grid, x: usize, y: usize, max: &usize, part: usize) -> bool {
-    let mut x = x;
-    let mut y = y;
+fn fall(g: &mut Grid, max: &usize, path: &mut Vec<Point>, part: usize) -> bool {
+    let (mut x, mut y) = path.pop().unwrap_or((500,0));
     if g.contains(&(x,y)) {
         return false;
     }
 
-
     loop {
+        path.push((x,y));
         assert!( y < *max+2 );
-        if part == 1 {
-            if y > *max {
+
+        if y > *max {
+            // Fall into the abyss or on the floor (part2)
+            if part == 1 {
+                path.pop();
                 return false;
             }
-        } else {
-            if y == *max+1 {
-                g.insert((x,y));
-                return true;
-            }
-        }
-
-        if !g.contains(&(x,y+1)) {
+            // part 2: hit the infinitely wide floor
+            break;
+        } else if !g.contains(&(x,y+1)) {
             y += 1;
         } else if x > 0 && !g.contains(&(x-1,y+1)) {
             y += 1;
@@ -69,18 +67,22 @@ fn fall(g: &mut Grid, x: usize, y: usize, max: &usize, part: usize) -> bool {
             y += 1;
             x += 1;
         } else {
-            g.insert((x,y));
-            return true;
+            // Hit the floor
+            break;
         }
     }
+    path.pop();
+    g.insert((x,y));
+    return true;
 }
 fn solve(g:Grid, part: usize) -> usize {
 
     let max = g.iter().map(|(_,b)| b).max().unwrap();
     let mut g = g.clone();
 
+    let mut path = vec![(500, 0)];
     for count in 0.. {
-        if ! fall(&mut g, 500, 0, max, part) {
+        if ! fall(&mut g, max, &mut path, part) {
             return count;
         }
     }
