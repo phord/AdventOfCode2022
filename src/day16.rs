@@ -86,24 +86,10 @@ fn parse(input: &'static str) -> Map {
 #[test] fn test_day16_part1() { assert_eq!(solve1(_SAMPLE), 1651); }
 #[test] fn test_day16_part2() { assert_eq!(solve2(_SAMPLE), 1707); }
 
-fn new_pressure<'a>(map: &'a Map, open: &mut FnvHashSet<&'static str>) -> usize {
-    if open.len() == 0 {
-        // println!("No valves are open.");
-        0
-    } else {
-        let press = open.iter().map(|x| map[x].rate).sum::<usize>();
-        // let mut valves = open.iter().filter(|x| **x != "AA").collect::<Vec<_>>();
-        // valves.sort();
-        // println!("Valves {:?} are open releasing {} pressure.", valves, press);
-        press
-    }
-}
-
 fn nav<'a>(map: &'a Map, path_map: &'a PathMap, open: &mut FnvHashSet<&'static str>,
-            room: &'static str,
+            room: &'static str, elephant: &'static str,
             pressure: usize, time_remaining: usize) -> Vec<usize> {
 
-    let new_press = new_pressure(map, open);
     // Find all remaining interesting paths to take.  Each path leads to a closed valve.
     let paths:Vec<(&str, &usize)> = path_map.iter()
                     .filter(|((from,to), dist)| *from == room && !open.contains(to) && **dist < time_remaining)
@@ -111,15 +97,15 @@ fn nav<'a>(map: &'a Map, path_map: &'a PathMap, open: &mut FnvHashSet<&'static s
                     .collect();
 
     if paths.is_empty() {
-        vec![pressure + time_remaining * new_press]
+        vec![pressure]
     } else {
         paths.iter().flat_map(|(dest, dist)| {
                 assert!(**dist < time_remaining);
-                let room = dest;
+                let time_remaining = time_remaining - **dist;
                 open.insert(dest);
-                let pressure = pressure + **dist * new_press;
-                let result = nav(&map, path_map, open, room, pressure, time_remaining - **dist);
-                open.remove(room);
+                let pressure = pressure + time_remaining * map[dest].rate;
+                let result = nav(&map, path_map, open, dest, elephant, pressure, time_remaining);
+                open.remove(dest);
                 result
             }).collect()
     }
@@ -139,7 +125,7 @@ fn solve(input: &'static str, part: usize) -> usize {
     let paths = find_interesting_paths(&map);
     let max_time = if part == 1 {30} else {26};
 
-    let mut result = nav(&map, &paths, &mut open, name, 0, max_time);
+    let mut result = nav(&map, &paths, &mut open, name, name, 0, max_time);
     result.sort();
     let result = result.iter().max().unwrap();
     *result
