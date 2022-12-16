@@ -4,6 +4,7 @@ use yaah::aoc;
 use crate::*;
 use fnv::FnvHashMap;
 use fnv::FnvHashSet;
+use itertools::Itertools;
 
 //------------------------------ PARSE INPUT
 
@@ -38,7 +39,7 @@ fn find_all_paths(map: &Map, from: &str, accum: Vec<Path>) -> Vec<Path> {
     }
 }
 
-fn find_path<'a>(all: &'a Vec<Path>, from: &'static str, to: &'static str) -> &'a Path {
+fn find_path<'a>(all: &'a Vec<Path>, to: &'static str) -> &'a Path {
     all.iter()
         .filter(|x| **x.last().unwrap() == *to)
         .map(|x| (x.len(), x))
@@ -49,7 +50,7 @@ fn find_path<'a>(all: &'a Vec<Path>, from: &'static str, to: &'static str) -> &'
 
 fn find_paths<'a>(map: &'a Map, from: &'static str, to: &Vec<&'static str>) -> Vec<Path> {
     let all: Vec<Path> = find_all_paths(map, from, vec![vec![from]]);
-    to.iter().filter(|x| **x != from).map(move |dest| find_path(&all, from, dest).clone()).collect()
+    to.iter().filter(|x| **x != from).map(move |dest| find_path(&all, dest).clone()).collect()
 }
 type PathMap = FnvHashMap<(&'static str, &'static str), usize>;
 fn find_interesting_paths(map: &Map) -> PathMap {
@@ -100,33 +101,27 @@ fn new_pressure<'a>(map: &'a Map, open: &mut FnvHashSet<&'static str>) -> usize 
 
 fn nav<'a>(map: &'a Map, path_map: &'a PathMap, open: &mut FnvHashSet<&'static str>,
             room: &'static str,
-            pressure: usize, clock: usize) -> Vec<usize> {
-    // println!("== Minute {} ==", clock);
-    // println!("You move to valve {}.", room);
-    if clock < 30 {
-        let new_press = new_pressure(map, open);
-        let time_remaining = 30 - clock;
-        // Find all remaining interesting paths to take.  Each path leads to a closed valve.
-        let paths:Vec<(&str, &usize)> = path_map.iter()
-                        .filter(|((from,to), dist)| *from == room && !open.contains(to) && **dist < time_remaining)
-                        .map(|((_, to), distance)| (*to, distance))
-                        .collect();
+            pressure: usize, time_remaining: usize) -> Vec<usize> {
 
-        if paths.is_empty() {
-            vec![pressure + time_remaining * new_press]
-        } else {
-            paths.iter().flat_map(|(dest, dist)| {
-                    assert!(**dist < time_remaining);
-                    let room = dest;
-                    open.insert(dest);
-                    let pressure = pressure + **dist * new_press;
-                    let result = nav(&map, path_map, open, room, pressure, clock + **dist);
-                    open.remove(room);
-                    result
-                }).collect()
-        }
+    let new_press = new_pressure(map, open);
+    // Find all remaining interesting paths to take.  Each path leads to a closed valve.
+    let paths:Vec<(&str, &usize)> = path_map.iter()
+                    .filter(|((from,to), dist)| *from == room && !open.contains(to) && **dist < time_remaining)
+                    .map(|((_, to), distance)| (*to, distance))
+                    .collect();
+
+    if paths.is_empty() {
+        vec![pressure + time_remaining * new_press]
     } else {
-        vec![pressure]
+        paths.iter().flat_map(|(dest, dist)| {
+                assert!(**dist < time_remaining);
+                let room = dest;
+                open.insert(dest);
+                let pressure = pressure + **dist * new_press;
+                let result = nav(&map, path_map, open, room, pressure, time_remaining - **dist);
+                open.remove(room);
+                result
+            }).collect()
     }
 }
 
@@ -136,15 +131,18 @@ fn solve(input: &'static str, part: usize) -> usize {
     open.insert("AA");
     let name = "AA";
 
-    let paths = find_interesting_paths(&map);
-    // dbg!(&paths);
+    let targets:Vec<&str> = map.iter()
+            .filter(|(_, valve)| valve.rate > 0)
+            .map(|(key, _)| *key)
+            .collect();
 
-    let mut result = nav(&map, &paths, &mut open, name, 0, 0);
+    let paths = find_interesting_paths(&map);
+    let max_time = if part == 1 {30} else {26};
+
+    let mut result = nav(&map, &paths, &mut open, name, 0, max_time);
     result.sort();
-    // dbg!(&result);
     let result = result.iter().max().unwrap();
     *result
-
 }
 
 fn solve1(input: &'static str) -> usize { solve(input, 1) }
