@@ -51,7 +51,7 @@ fn find_paths<'a>(map: &'a Map, from: &'static str, to: &Vec<&'static str>) -> V
     let all: Vec<Path> = find_all_paths(map, from, vec![vec![from]]);
     to.iter().filter(|x| **x != from).map(move |dest| find_path(&all, from, dest).clone()).collect()
 }
-type PathMap = FnvHashMap<(&'static str, &'static str), Path>;
+type PathMap = FnvHashMap<(&'static str, &'static str), usize>;
 fn find_interesting_paths(map: &Map) -> PathMap {
     let interesting_valves:Vec<&str> = map.iter()
             .filter(|(name, valve)| **name == "AA" || valve.rate > 0)
@@ -61,7 +61,7 @@ fn find_interesting_paths(map: &Map) -> PathMap {
     interesting_valves.iter()
             .map(|from| find_paths(map, from, &interesting_valves))
             .flatten()
-            .map(|x| ((*x.first().unwrap(), *x.last().unwrap()), x))
+            .map(|x| ((*x.first().unwrap(), *x.last().unwrap()), x.len()))
             .collect()
 }
 
@@ -82,7 +82,9 @@ fn parse(input: &'static str) -> Map {
 }
 
 //------------------------------ SOLVE
-#[test] fn test_day16_part1() { assert_eq!(solve1(_SAMPLE), 1651); } // 1651
+#[test] fn test_day16_part1() { assert_eq!(solve1(_SAMPLE), 1651); }
+#[test] fn test_day16_part2() { assert_eq!(solve2(_SAMPLE), 1707); }
+
 fn new_pressure<'a>(map: &'a Map, open: &mut FnvHashSet<&'static str>) -> usize {
     if open.len() == 0 {
         // println!("No valves are open.");
@@ -96,52 +98,32 @@ fn new_pressure<'a>(map: &'a Map, open: &mut FnvHashSet<&'static str>) -> usize 
     }
 }
 
-fn nav<'a>(map: &'a Map, path_map: &'a PathMap, open: &mut FnvHashSet<&'static str>, path: &Path,
+fn nav<'a>(map: &'a Map, path_map: &'a PathMap, open: &mut FnvHashSet<&'static str>,
             room: &'static str,
             pressure: usize, clock: usize) -> Vec<usize> {
     // println!("== Minute {} ==", clock);
-    let mut pressure = pressure + new_pressure(map, open);
     // println!("You move to valve {}.", room);
     if clock < 30 {
-        if path.len() == 0 {
-            // We arrived at a room at the end of a path.  Open the valve if it's closed.
-            let mut clock = clock;
-            let valve = &map[room];
-            let to_open = !open.contains(room) && valve.rate > 0;
-            if to_open {
-                clock = clock + 1;
-                // println!("== Minute {} ==", clock);
-                pressure = pressure + new_pressure(map, open);
-                // println!("You open valve {}.", room);
-                open.insert(room);
-            }
+        let new_press = new_pressure(map, open);
+        let time_remaining = 30 - clock;
+        // Find all remaining interesting paths to take.  Each path leads to a closed valve.
+        let paths:Vec<(&str, &usize)> = path_map.iter()
+                        .filter(|((from,to), dist)| *from == room && !open.contains(to) && **dist < time_remaining)
+                        .map(|((_, to), distance)| (*to, distance))
+                        .collect();
 
-            // Find all remaining interesting paths to take.  Each path we take should lead to a closed valve.
-            let paths:Vec<&Path> = path_map.iter()
-                            .filter(|((from,to), _)| *from == room && !open.contains(to))
-                            .map(|((_,_), path)| path)
-                            .collect();
-
-            let result = if paths.is_empty() {
-                // println!("No more paths to closed valves");
-                nav(&map, path_map, open, path, room, pressure, clock+1)
-            } else {
-                paths.iter().flat_map(|path| {
-                        assert_eq!(room, *path.first().unwrap());
-                        let room = path[1];
-                        let path: Path = path[2..].iter().map(|x| *x).collect();
-                        nav(&map, path_map, open, &path, room, pressure, clock+1)}).collect()
-            };
-            if to_open {
-                // Close the valve before trying other paths
-                open.remove(room);
-            }
-            result
+        if paths.is_empty() {
+            vec![pressure + time_remaining * new_press]
         } else {
-            // Continue on the pre-ordained path.
-            let room = path.first().unwrap();
-            let path = path[1..].iter().map(|x| *x).collect();
-            nav(&map, path_map, open, &path, room, pressure, clock+1)
+            paths.iter().flat_map(|(dest, dist)| {
+                    assert!(**dist < time_remaining);
+                    let room = dest;
+                    open.insert(dest);
+                    let pressure = pressure + **dist * new_press;
+                    let result = nav(&map, path_map, open, room, pressure, clock + **dist);
+                    open.remove(room);
+                    result
+                }).collect()
         }
     } else {
         vec![pressure]
@@ -152,13 +134,12 @@ fn solve(input: &'static str, part: usize) -> usize {
     let map = parse(input);
     let mut open = FnvHashSet::default();
     open.insert("AA");
-    let path: Path = vec![];
     let name = "AA";
 
     let paths = find_interesting_paths(&map);
     // dbg!(&paths);
 
-    let mut result = nav(&map, &paths, &mut open, &path, name, 0, 0);
+    let mut result = nav(&map, &paths, &mut open, name, 0, 0);
     result.sort();
     // dbg!(&result);
     let result = result.iter().max().unwrap();
@@ -175,13 +156,12 @@ fn solve2(input: &'static str) -> usize { solve(input, 2) }
 #[aoc(day16, part1)]
 fn day16_part1(input: &'static str) -> usize {
     let ans = solve1(input);
-    // 1840 is too high.  1845 is too high.
-    // assert_eq!(ans, 0);
+    assert_eq!(ans, 1728);
     ans
 }
 
 #[allow(unused)]
-// #[aoc(day16, part2)]
+#[aoc(day16, part2)]
 fn day16_part2(input: &'static str) -> usize {
     let ans = solve2(input);
     // assert_eq!(ans, 0);
@@ -190,7 +170,6 @@ fn day16_part2(input: &'static str) -> usize {
 
 //------------------------------ TESTS
 
-#[test] fn test_day16_part2() { assert_eq!(solve2(_SAMPLE), _ANS2); }
 
 //------------------------------ SAMPLE DATA
 
