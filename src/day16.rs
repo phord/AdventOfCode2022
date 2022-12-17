@@ -4,7 +4,6 @@ use yaah::aoc;
 use crate::*;
 use fnv::FnvHashMap;
 use fnv::FnvHashSet;
-use itertools::Itertools;
 
 //------------------------------ PARSE INPUT
 
@@ -88,7 +87,7 @@ fn parse(input: &'static str) -> Map {
 
 fn nav<'a>(map: &'a Map, path_map: &'a PathMap, open: &mut FnvHashSet<&'static str>,
             room: &'static str, elephant: &'static str,
-            pressure: usize, time_remaining: usize) -> Vec<usize> {
+            pressure: usize, time_remaining: usize, eletime_remaining: usize) -> Vec<usize> {
 
     // Find all remaining interesting paths to take.  Each path leads to a closed valve.
     let paths:Vec<(&str, &usize)> = path_map.iter()
@@ -96,18 +95,55 @@ fn nav<'a>(map: &'a Map, path_map: &'a PathMap, open: &mut FnvHashSet<&'static s
                     .map(|((_, to), distance)| (*to, distance))
                     .collect();
 
-    if paths.is_empty() {
+    let epaths:Vec<(&str, &usize)> = path_map.iter()
+                    .filter(|((from,to), dist)| *from == elephant && !open.contains(to) && **dist < eletime_remaining)
+                    .map(|((_, to), distance)| (*to, distance))
+                    .collect();
+
+    if paths.is_empty() && epaths.is_empty() {
         vec![pressure]
-    } else {
+    } else if epaths.is_empty() {
         paths.iter().flat_map(|(dest, dist)| {
                 assert!(**dist < time_remaining);
                 let time_remaining = time_remaining - **dist;
                 open.insert(dest);
                 let pressure = pressure + time_remaining * map[dest].rate;
-                let result = nav(&map, path_map, open, dest, elephant, pressure, time_remaining);
+                let result = nav(&map, path_map, open, dest, elephant, pressure, time_remaining, eletime_remaining);
                 open.remove(dest);
                 result
             }).collect()
+    } else if paths.is_empty() {
+        epaths.iter().flat_map(|(dest, dist)| {
+                assert!(**dist < eletime_remaining);
+                let eletime_remaining = eletime_remaining - **dist;
+                open.insert(dest);
+                let pressure = pressure + eletime_remaining * map[dest].rate;
+                let result = nav(&map, path_map, open, dest, elephant, pressure, time_remaining, eletime_remaining);
+                open.remove(dest);
+                result
+            }).collect()
+    } else {
+        // Both!
+        paths.iter().flat_map(|(dest, dist)| {
+                assert!(**dist < time_remaining);
+                let time_remaining = time_remaining - **dist;
+                open.insert(dest);
+                let pressure = pressure + time_remaining * map[dest].rate;
+
+                let eresult: Vec<usize> = epaths.iter().filter(|(edest,_)| edest != dest)
+                        .flat_map(|(edest, dist)| {
+                            assert!(**dist < eletime_remaining);
+                            let eletime_remaining = eletime_remaining - **dist;
+                            open.insert(edest);
+                            let pressure = pressure + eletime_remaining * map[edest].rate;
+                            let result = nav(&map, path_map, open, dest, edest, pressure, time_remaining, eletime_remaining);
+                            open.remove(edest);
+                            result
+                    }).collect();
+
+                open.remove(dest);
+                eresult
+        }).collect()
     }
 }
 
@@ -117,15 +153,11 @@ fn solve(input: &'static str, part: usize) -> usize {
     open.insert("AA");
     let name = "AA";
 
-    let targets:Vec<&str> = map.iter()
-            .filter(|(_, valve)| valve.rate > 0)
-            .map(|(key, _)| *key)
-            .collect();
-
     let paths = find_interesting_paths(&map);
     let max_time = if part == 1 {30} else {26};
+    let eletime = if part == 1 {0} else {26};
 
-    let mut result = nav(&map, &paths, &mut open, name, name, 0, max_time);
+    let mut result = nav(&map, &paths, &mut open, name, name, 0, max_time, eletime);
     result.sort();
     let result = result.iter().max().unwrap();
     *result
