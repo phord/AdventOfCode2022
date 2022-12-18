@@ -2,6 +2,7 @@
 use yaah::aoc;
 #[allow(unused)]
 use crate::*;
+use fnv::FnvHashSet;
 
 //------------------------------ PARSE INPUT
 
@@ -15,7 +16,87 @@ fn is_adjacent(a: &Vec<i32>, b: &Vec<i32>) -> bool {
     (0..3).map(|x:usize| (a[x]-b[x]).abs()).sum::<i32>() == 1
 }
 
-fn solve1(input: &'static str, part: usize) -> usize {
+fn find_pockets(p: &Vec<Vec<i32>>) -> usize {
+
+    let minx = p.iter().map(|x| x[0]).min().unwrap();
+    let maxx = p.iter().map(|x| x[0]).max().unwrap();
+
+    let miny = p.iter().map(|x| x[1]).min().unwrap();
+    let maxy = p.iter().map(|x| x[1]).max().unwrap();
+
+    let minz = p.iter().map(|x| x[2]).min().unwrap();
+    let maxz = p.iter().map(|x| x[2]).max().unwrap();
+
+    let mut xgaps:FnvHashSet<(i32, i32, i32)> = FnvHashSet::default();
+    let mut ygaps:FnvHashSet<(i32, i32, i32)> = FnvHashSet::default();
+    let mut zgaps:FnvHashSet<(i32, i32, i32)> = FnvHashSet::default();
+
+    for y in miny..=maxy {
+        for z in minz..=maxz {
+            let column:Vec<i32> = p.iter().filter(|c| c[1]==y && c[2] == z).map(|c| c[0]).collect();
+            if let Some(min) = column.iter().min() {
+                if let Some(max) = column.iter().max() {
+                    for i in *min..*max {
+                        if !column.contains(&i) {
+                            xgaps.insert((i,y,z));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    for x in minx..=maxx {
+        for z in minz..=maxz {
+            let column:Vec<i32> = p.iter().filter(|c| c[0]==x && c[2] == z).map(|c| c[1]).collect();
+            if let Some(min) = column.iter().min() {
+                if let Some(max) = column.iter().max() {
+                    for i in *min..*max {
+                        if !column.contains(&i) {
+                            ygaps.insert((x,i,z));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    for y in miny..=maxy {
+        for x in minx..=maxx {
+            let column:Vec<i32> = p.iter().filter(|c| c[1]==y && c[0] == x).map(|c| c[2]).collect();
+            if let Some(min) = column.iter().min() {
+                if let Some(max) = column.iter().max() {
+                    for i in *min..*max {
+                        if !column.contains(&i) {
+                            zgaps.insert((x,y,i));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let x_and_y:FnvHashSet<(i32, i32, i32)> = xgaps.intersection(&ygaps).map(|x| *x).collect();
+    let x_and_y_and_z:FnvHashSet<(i32, i32, i32)> = x_and_y.intersection(&zgaps).map(|x| *x).collect();
+
+
+    let p = &x_and_y_and_z;
+
+    let mut count_adj = 0;
+    for a in p {
+        for b in p {
+            if is_adjacent(&vec![a.0, a.1, a.2], &vec![b.0, b.1, b.2]) {
+                count_adj += 1;
+            }
+        }
+    }
+
+    x_and_y_and_z.len() * 6 - count_adj
+
+}
+
+
+fn solve1(input: &'static str) -> usize {
     let p = parse(input);
     let mut count_adj = 0;
     for a in &p {
@@ -30,7 +111,7 @@ fn solve1(input: &'static str, part: usize) -> usize {
     p.len() * 6 - count_adj
 }
 
-fn solve2(input: &'static str, part: usize) -> usize {
+fn solve2(input: &'static str) -> usize {
     let p = parse(input);
     let mut count_adj = 0;
     for a in &p {
@@ -41,8 +122,9 @@ fn solve2(input: &'static str, part: usize) -> usize {
         }
     }
 
-
-    p.len() * 6 - count_adj
+    let pocks = find_pockets(&p);
+    dbg!(&pocks);
+    p.len() * 6 - count_adj - pocks
 }
 //------------------------------ RUNNERS
 
@@ -55,8 +137,7 @@ fn day18_part1(input: &'static str) -> usize {
 }
 
 #[allow(unused)]
-// Uncomment next line when solution is ready
-// #[aoc(day18, part2)]
+#[aoc(day18, part2)]
 fn day18_part2(input: &'static str) -> usize {
     let ans = solve2(input);
     // assert_eq!(ans, 0);
@@ -66,7 +147,7 @@ fn day18_part2(input: &'static str) -> usize {
 //------------------------------ TESTS
 
 #[test] fn test_day18_part1() { assert_eq!(solve1(_SAMPLE), 64); }
-#[test] fn test_day18_part2() { assert_eq!(solve2(_SAMPLE), _ANS2); }
+#[test] fn test_day18_part2() { assert_eq!(solve2(_SAMPLE), 58); }
 
 //------------------------------ SAMPLE DATA
 
