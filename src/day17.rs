@@ -65,8 +65,7 @@ fn height(a: &Grid) -> &i32 {
 
 fn draw(a: &Grid, b: &Grid) {
     let height = *[height(&a), height(&b)].iter().max().unwrap();
-    for iy in 0..*height {
-        let y = *height-iy;
+    for y in (0..*height).rev() {
         print!("|");
         for x in 0..7 {
             let p = (y,x);
@@ -83,21 +82,15 @@ fn draw(a: &Grid, b: &Grid) {
     println!("+-------+");
 }
 
-enum Rocks {
-    Count(usize, usize),
-    Measure(usize),
-}
-
 fn find_pattern<T: std::cmp::PartialEq>( history: &Vec<T>) -> Option<(usize, usize)> {
     let max = history.len()/2;
-    for width in (2..=max).rev() {
-        let maxoff = history.len()-width*2;
-        for offset in 0..=maxoff {
-            let end = offset + width;
-            let end2 = end + width;
-            if history[offset..end] == history[end..end2] {
-                return Some((offset, width));
-            }
+    let min = history.len()/5;
+    for width in (min..=max).rev() {
+        let offset = history.len()-width*2;
+        let end = offset + width;
+        let end2 = end + width;
+        if history[offset..end] == history[end..end2] {
+            return Some((offset, width));
         }
     }
     None
@@ -122,10 +115,11 @@ fn drop_rocks(st: &mut State, count: i32) {
 
     let quiet = true;
 
-    for rock in 0..count {
+    for _ in 0..count {
         let shape = &st.shapes[st.si];
         st.si = (st.si + 1) % st.shapes.len();
-        let p:Point = (4 + height(&st.board), 2);
+        let h = *height(&st.board);
+        let p:Point = (4 + h, 2);
 
         let mut s = translate(shape, p);
         if !quiet {
@@ -156,6 +150,8 @@ fn drop_rocks(st: &mut State, count: i32) {
             } else {
                 // rock comes to rest
                 insert(&mut st.board, s);
+                // Trim board levels more than 100 away from the top.
+                st.board = st.board.iter().filter(|(y,_)| *y > h-100).into_iter().map(|x| *x).collect();
                 if !quiet {
                     println!("Rock falls one unit, causing it to come to rest");
                     draw(&st.board, &FnvHashSet::default());
@@ -173,7 +169,7 @@ fn drop_rocks(st: &mut State, count: i32) {
  * Searching for a pattern
 */
 #[test] fn test_rock_pattern() {
-    const sample: &str = ">>><<><>><<<>><<<<<>><><>><>><>><><>>><>>><<><>>><<<>>><<<><<<>><>><<>>
+    let sample: &str = ">>><<><>><<<>><<<<<>><><>><>><>><><>>><>>><<><>>><<<>>><<<><<<>><>><<>>
 ";
 
     let wind = parse(sample);
@@ -184,77 +180,67 @@ fn drop_rocks(st: &mut State, count: i32) {
     dbg!(find_rock_pattern(&mut state));
 }
 
-fn find_rock_pattern(state: &mut State) -> Option<(usize, usize)> {
+fn find_rock_pattern(state: &mut State) -> Option<(usize, usize, i32)> {
 
     let mut history = Vec::new();
     let mut ph = 0;
     let rocks = state.wind.len();
-    for rock in 0..rocks*10 {
+    for _ in 0..rocks*4 {
         drop_rocks(state, 1);
         let nh = height(&state.board);
-        history.push((state.si, nh-ph));
+        history.push(nh-ph);
         ph = *nh;
     }
-    println!("{:?}", &history);
-    let patt = find_pattern(&history);
-    // match patt {
-    //     None => {},
-    //     Some((mut off, mut len)) => {
-    //         println!("Pattern: ({}, {})", off, len);
-
-    //         let mut run = history.clone();
-    //         loop {
-    //             run = run[off..off+len].iter().map(|x| *x).collect::<Vec<(usize, i32)>>();
-    //             let p = find_pattern(&run);
-    //             match p {
-    //                 None => {println!("No sub-patterns!"); break;},
-    //                 Some((0, l)) => {
-    //                     println!("Subpattern: (0, {})", l);
-    //                     off = 0;
-    //                     len = l;
-    //                 },
-    //                 _ => {println!("Subpattern with offset {:?}", p); break;},
-    //             }
-    //         }
-    //     },
-    // }
-    patt
+    // println!("{:?}", &history);
+    match find_pattern(&history) {
+        Some((offset, size)) => Some((offset, size, history[offset..offset+size].iter().sum())),
+        _ => None
+    }
 }
 
  #[test] fn test_day17_part1() { assert_eq!(solve1(_SAMPLE), 3068); }
-fn solve(input: &'static str, part: usize) -> u64 {
+ fn solve1(input: &'static str) -> u64 {
+    let wind = parse(input);
+    let shapes = get_shapes();
+    let shapes:Vec<Grid> = shapes.iter().map(|s| s.points.iter().map(|x| *x).collect::<Grid>()).collect();
+    let mut state = State {si: 0, wi:0, board: FnvHashSet::default(), wind, shapes, };
 
-    let rocks:u64 = if part == 1 { 2022 } else { 1_000_000_000_000 };
+    drop_rocks(&mut state, 2022);
+    *height(&state.board) as u64
+}
+
+#[test] fn test_day17_part2() { assert_eq!(solve2(_SAMPLE), 1514285714288); }
+fn solve2(input: &'static str) -> u64 {
+
+    let rocks = 1_000_000_000_000;
 
     let wind = parse(input);
     let shapes = get_shapes();
     let shapes:Vec<Grid> = shapes.iter().map(|s| s.points.iter().map(|x| *x).collect::<Grid>()).collect();
     let mut state = State {si: 0, wi:0, board: FnvHashSet::default(), wind, shapes, };
 
-    // 35 is empirically determined to be the number of rocks where the pattern repeats. But the first rocks
-    // are special (up to 15).  So let's squash them by dropping 35 (for easy math) at the start.
-    let pattern = (state.wind.len() * 5 * 7) as i32;
-    drop_rocks(&mut state, pattern);
-    let h = *height(&state.board);
+    if let Some((offset, size, unit_height)) = find_rock_pattern(&mut state) {
 
-    // Now drop 35 more so we can measure the height of our pattern
-    drop_rocks(&mut state, pattern);
-    let ph = *height(&state.board);
+        // We've dropped offset + size * 2 rocks so far.
+        // We see a pattern repeating at least every size rocks.
+        // Each next pattern results in unit_height more height.
 
-    // Find out how many extra rocks we need to drop to make our target number and drop them
-    let remainder = rocks % pattern as u64;
-    drop_rocks(&mut state, remainder as i32);
+        // Find out how many extra rocks we need to drop to make our target number and drop them
+        let remainder = rocks - offset - size*2;
+        let rem = remainder % size as usize;
+        dbg!(rem);
 
-    // How many patterns of rocks did we skip
-    let virtualized = rocks / pattern as u64 - 2;
+        drop_rocks(&mut state, rem as i32);
 
-    let fh = *height(&state.board) as u64 + virtualized * (ph - h) as u64;
+        // How many patterns of rocks did we skip
+        let virtualized = remainder / size as usize;
 
-    fh
+        let fh = *height(&state.board) as usize + virtualized * unit_height as usize;
+
+        return fh as u64;
+    }
+    unreachable!();
 }
-
-fn solve1(input: &'static str) -> u64 { solve(input, 1) }
-fn solve2(input: &'static str) -> u64 { solve(input, 2) }
 
 //------------------------------ RUNNERS
 
@@ -270,13 +256,12 @@ fn day17_part1(input: &'static str) -> u64 {
 #[aoc(day17, part2)]
 fn day17_part2(input: &'static str) -> u64 {
     let ans = solve2(input);
-    // assert_eq!(ans, 0);
+    assert_eq!(ans, 1507692307690);
     ans
 }
 
 //------------------------------ TESTS
 
-#[test] fn test_day17_part2() { assert_eq!(solve2(_SAMPLE), 0); }
 
 //------------------------------ SAMPLE DATA
 
