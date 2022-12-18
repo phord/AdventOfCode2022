@@ -14,7 +14,7 @@ clap = { version = "4.0", features = ["derive"] }
 num = "0.4"
 
 criterion = "0.4"
-itertools = "*"
+itertools = "0.10.5"
 fnv = "1.0.3"
 
 [[bench]]

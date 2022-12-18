@@ -86,8 +86,7 @@ fn parse(input: &'static str) -> Map {
 #[test] fn test_day16_part2() { assert_eq!(solve2(_SAMPLE), 1707); }
 
 fn nav<'a>(map: &'a Map, path_map: &'a PathMap, open: &mut FnvHashSet<&'static str>,
-            room: &'static str, elephant: &'static str,
-            pressure: usize, time_remaining: usize, eletime_remaining: usize) -> Vec<usize> {
+            room: &'static str, pressure: usize, time_remaining: usize) -> Vec<(FnvHashSet<&'static str>, usize)> {
 
     // Find all remaining interesting paths to take.  Each path leads to a closed valve.
     let paths:Vec<(&str, &usize)> = path_map.iter()
@@ -95,72 +94,69 @@ fn nav<'a>(map: &'a Map, path_map: &'a PathMap, open: &mut FnvHashSet<&'static s
                     .map(|((_, to), distance)| (*to, distance))
                     .collect();
 
-    let epaths:Vec<(&str, &usize)> = path_map.iter()
-                    .filter(|((from,to), dist)| *from == elephant && !open.contains(to) && **dist < eletime_remaining)
-                    .map(|((_, to), distance)| (*to, distance))
-                    .collect();
-
-    if paths.is_empty() && epaths.is_empty() {
-        vec![pressure]
-    } else if epaths.is_empty() {
+    let orig = vec![(open.clone(), pressure)];
+    if paths.is_empty() {
+        orig
+    } else{
         paths.iter().flat_map(|(dest, dist)| {
                 assert!(**dist < time_remaining);
                 let time_remaining = time_remaining - **dist;
                 open.insert(dest);
                 let pressure = pressure + time_remaining * map[dest].rate;
-                let result = nav(&map, path_map, open, dest, elephant, pressure, time_remaining, eletime_remaining);
+                let mut result = nav(&map, path_map, open, dest, pressure, time_remaining);
                 open.remove(dest);
+                result.extend(orig.clone().into_iter());
                 result
             }).collect()
-    } else if paths.is_empty() {
-        epaths.iter().flat_map(|(dest, dist)| {
-                assert!(**dist < eletime_remaining);
-                let eletime_remaining = eletime_remaining - **dist;
-                open.insert(dest);
-                let pressure = pressure + eletime_remaining * map[dest].rate;
-                let result = nav(&map, path_map, open, dest, elephant, pressure, time_remaining, eletime_remaining);
-                open.remove(dest);
-                result
-            }).collect()
-    } else {
-        // Both!
-        paths.iter().flat_map(|(dest, dist)| {
-                assert!(**dist < time_remaining);
-                let time_remaining = time_remaining - **dist;
-                open.insert(dest);
-                let pressure = pressure + time_remaining * map[dest].rate;
-
-                let eresult: Vec<usize> = epaths.iter().filter(|(edest,_)| edest != dest)
-                        .flat_map(|(edest, dist)| {
-                            assert!(**dist < eletime_remaining);
-                            let eletime_remaining = eletime_remaining - **dist;
-                            open.insert(edest);
-                            let pressure = pressure + eletime_remaining * map[edest].rate;
-                            let result = nav(&map, path_map, open, dest, edest, pressure, time_remaining, eletime_remaining);
-                            open.remove(edest);
-                            result
-                    }).collect();
-
-                open.remove(dest);
-                eresult
-        }).collect()
     }
 }
+
+use itertools::Itertools;
 
 fn solve(input: &'static str, part: usize) -> usize {
     let map = parse(input);
     let mut open = FnvHashSet::default();
-    open.insert("AA");
+    // open.insert("AA");
     let name = "AA";
 
     let paths = find_interesting_paths(&map);
     let max_time = if part == 1 {30} else {26};
-    let eletime = if part == 1 {0} else {26};
 
-    let mut result = nav(&map, &paths, &mut open, name, name, 0, max_time, eletime);
-    result.sort();
-    let result = result.iter().max().unwrap();
-    *result
+    let result = nav(&map, &paths, &mut open, name, 0, max_time);
+
+    if part == 1 {
+        let result = result.iter().map(|(_,x)| x).max().unwrap();
+        *result
+    } else {
+        dbg!(result.len());
+        let mut bit = 1u32;
+        let mut node_value: FnvHashMap<&'static str, u32> = FnvHashMap::default();
+        for ((_, node), _) in paths {
+            if !node_value.contains_key(node) {
+                node_value.insert(node, bit);
+                bit *= 2;
+            }
+        }
+
+        let nsvalue = |set:FnvHashSet<&'static str>| set.iter().map(|s| node_value[s]).sum::<u32>();
+        let mut best_map: FnvHashMap<u32, usize> = FnvHashMap::default();
+        for (set, press) in result {
+            let set = nsvalue(set);
+            if best_map.contains_key(&set) {
+                if best_map[&set] < press {
+                    best_map.insert(set, press);
+                }
+            } else {
+                best_map.insert(set, press);
+            }
+        }
+
+        best_map.iter()
+            .permutations(2)
+            .filter(|pairs| (pairs[0].0 & pairs[1].0) == 0)
+            .map(|pairs| pairs[0].1 + pairs[1].1)
+            .max().unwrap()
+    }
 }
 
 fn solve1(input: &'static str) -> usize { solve(input, 1) }
@@ -180,7 +176,7 @@ fn day16_part1(input: &'static str) -> usize {
 #[aoc(day16, part2)]
 fn day16_part2(input: &'static str) -> usize {
     let ans = solve2(input);
-    // assert_eq!(ans, 0);
+    assert_eq!(ans, 2304);
     ans
 }
 
