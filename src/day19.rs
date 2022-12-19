@@ -60,7 +60,7 @@ fn time_needed(cost: &Vec<i32>, robots: &Vec<i32>, inv: &Vec<i32>) -> i32 {
 }
 
 
-fn nav( bp: &Vec<Vec<i32>>, robots: Vec<i32>, inv: Vec<i32>, clock: i32) -> i32 {
+fn nav( bp: &Vec<Vec<i32>>, robots: &mut Vec<i32>, inv: &mut Vec<i32>, clock: i32) -> i32 {
 
     // What robots can I build next with the resources I'm already getting?
     // How long does it take to build each robot?
@@ -69,7 +69,7 @@ fn nav( bp: &Vec<Vec<i32>>, robots: Vec<i32>, inv: Vec<i32>, clock: i32) -> i32 
         })
         .collect();
 
-    if clock > 10 {
+    if clock > 20 {
         println!("{}  {:?} {:?}  {:?}", clock, &robots, &inv, &options);
     }
     if options.iter().all(|t| *t >= clock ) {
@@ -79,77 +79,95 @@ fn nav( bp: &Vec<Vec<i32>>, robots: Vec<i32>, inv: Vec<i32>, clock: i32) -> i32 
     } else {
         let mut options:Vec<_> = options.iter().enumerate()
             .filter(|(_, time)| **time <= clock)
-            .map(|(b, t)| (robots[b], b, t))
+            // .map(|(b, t)| (robots[b]/b, b, t))
             .collect();
 
+        // Neither of these matter because we're still doing an exhaustive search :-(
         // heuristic: Build robots we have fewer of first
-        options.sort();
+        // Heuristic: Build higher-order robots first
+        // options.sort();
         options.iter()
-        .map(| (_, bot, time) | {
+        .map(| (bot, time) | {
             // Build a robot in the future.
             // We won't benefit until t+1, so skip ahead
             let time = **time + 1;
-            let finv:Vec<i32> = (0..4).map(|i| {
-                inv[i] + time * robots[i] - bp[*bot][i]
-            }).collect();
+            for i in 0..4 {
+                inv[i] +=  time * robots[i] - bp[*bot][i];
+            }
+            robots[*bot] += 1;
+            let result = nav(bp, robots, inv, clock - time);
+            robots[*bot] -= 1;
+            for i in 0..4 {
+                inv[i] -=  time * robots[i] - bp[*bot][i];
+            }
 
-            let frob:Vec<i32> = (0..4).map(|i| {
-                robots[i] + if i == *bot { 1 } else { 0 }
-            }).collect();
-
-            nav(bp, frob, finv, clock - time)
+            result
         }).max().unwrap()
     }
         // Wait to build it, then build it, then descend
 }
 
-#[test] fn test_day19_part1() { assert_eq!(solve1(_SAMPLE), _ANS1); }
+#[test] fn test_day19_part1() { assert_eq!(solve1(), _ANS1); }
 
-fn solve(input: &'static str, part: usize) -> usize {
-    let bp = sample();
+fn solve1() -> usize {
+    // let bp = sample();
+    let bp = parse();
     let clock = 24;
-    let robots = vec![1, 0, 0, 0];
-    let inventory = vec![0, 0, 0, 0];
+    let mut robots = vec![1, 0, 0, 0];
+    let mut inventory = vec![0, 0, 0, 0];
 
     let mut total = 0;
     for (id, plan) in bp.iter().enumerate() {
         let plan = plan.iter().map(|tpl| vec![tpl.0, tpl.1, tpl.2, 0]).collect::<Vec<Vec<i32>>>();
         println!("Plan: {:?}", &plan);
-        let score = nav(&plan, robots.clone(), inventory.clone(), clock);
+        let score = nav(&plan, &mut robots, &mut inventory, clock);
         let id = id+1;
-        let quality = id * score;
+        let quality = id as i32 * score;
         total += quality;
         println!("{}. Score: {}  Quality: {}  Total: {}", id, score, quality, total);
     }
-    0
+    total as usize
 }
 
-fn solve1(input: &'static str) -> usize { solve(input, 1) }
-fn solve2(input: &'static str) -> usize { solve(input, 2) }
+#[test] fn test_day19_part2() { assert_eq!(solve2(), _ANS2); }
+
+fn solve2() -> usize {
+    let bp = sample();
+    let bp = parse();
+    let clock = 32;
+    let mut robots = vec![1, 0, 0, 0];
+    let mut inventory = vec![0, 0, 0, 0];
+
+    let mut total = 1;
+    for (id, plan) in bp.iter().enumerate() {
+        let plan = plan.iter().map(|tpl| vec![tpl.0, tpl.1, tpl.2, 0]).collect::<Vec<Vec<i32>>>();
+        println!("Plan: {:?}", &plan);
+        let score = nav(&plan, &mut robots, &mut inventory, clock);
+        let id = id+1;
+        total *= score;
+        println!("{}. Score: {}  Total: {}", id, score, total);
+    }
+    total as usize
+}
+
 
 //------------------------------ RUNNERS
 
 #[allow(unused)]
-// Uncomment next line when solution is ready
-// #[aoc(day19, part1)]
+#[aoc(day19, part1)]
 fn day19_part1(input: &'static str) -> usize {
-    let ans = solve1(input);
-    // assert_eq!(ans, 0);
+    let ans = solve1();
+    assert_eq!(ans, 33);
     ans
 }
 
 #[allow(unused)]
-// Uncomment next line when solution is ready
-// #[aoc(day19, part2)]
+#[aoc(day19, part2)]
 fn day19_part2(input: &'static str) -> usize {
-    let ans = solve2(input);
+    let ans = solve2();
     // assert_eq!(ans, 0);
     ans
 }
-
-//------------------------------ TESTS
-
-#[test] fn test_day19_part2() { assert_eq!(solve2(_SAMPLE), _ANS2); }
 
 //------------------------------ SAMPLE DATA
 
