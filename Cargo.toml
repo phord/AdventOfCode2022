@@ -16,6 +16,7 @@ num = "0.4"
 criterion = "0.4"
 itertools = "0.10.5"
 fnv = "1.0.3"
+nom = "7"
 
 [[bench]]
 name = "aoc-bench"
