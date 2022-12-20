@@ -228,7 +228,6 @@ fn solve2(input: &'static str) -> u64 {
         // Find out how many extra rocks we need to drop to make our target number and drop them
         let remainder = rocks - offset - size*2;
         let rem = remainder % size as usize;
-        dbg!(rem);
 
         drop_rocks(&mut state, rem as i32);
 

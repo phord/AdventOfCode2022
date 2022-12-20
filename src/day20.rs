@@ -42,6 +42,7 @@ fn solve(input: &'static str, part: usize) -> i64 {
             }
         }
     }
+    // println!("{:?}", new.iter().map(|x| x.1).collect::<Vec<i64>>());
     let zero = new.iter().position(|x| x.1 == 0).unwrap();
     [1000, 2000, 3000].iter().map(|x| new[(zero + x) % l as usize].1).sum()
 }

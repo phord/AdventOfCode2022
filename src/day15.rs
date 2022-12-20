@@ -95,7 +95,7 @@ fn solve2(input: &'static str, range: i32) -> u64 {
                 }
             } else if a > end {
                 assert_eq!(a-1, end);
-                println!("{:?}", (end, row));
+                // println!("{:?}", (end, row));
                 return 4000000u64 * (end as u64) + row as u64;
             }
         }

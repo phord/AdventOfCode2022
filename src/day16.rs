@@ -128,7 +128,7 @@ fn solve(input: &'static str, part: usize) -> usize {
         let result = result.iter().map(|(_,x)| x).max().unwrap();
         *result
     } else {
-        dbg!(result.len());
+        // dbg!(result.len());
         let mut bit = 1u32;
         let mut node_value: FnvHashMap<&'static str, u32> = FnvHashMap::default();
         for ((_, node), _) in paths {
