@@ -67,7 +67,7 @@ fn parse() -> Vec<Blueprint> {
 
 //------------------------------ SOLVE
 
-fn time_needed(cost: &Vec<i32>, robots: &Vec<i32>, inv: &Vec<i32>) -> i32 {
+fn time_needed(cost: &[i32; 4], robots: &[i32; 4], inv: &[i32; 4]) -> i32 {
     (0..4).map(|i| {
         let c = if cost[i] > inv[i] { cost[i] - inv[i] } else { 0 };
         let t = if robots[i] > 0 { (c + robots[i] - 1) / robots[i] } else { if c > 0 {99} else {0} };
@@ -76,7 +76,7 @@ fn time_needed(cost: &Vec<i32>, robots: &Vec<i32>, inv: &Vec<i32>) -> i32 {
 }
 
 
-fn nav( bp: &Vec<Vec<i32>>, max_cost: &Vec<i32>, robots: &mut Vec<i32>, inv: &mut Vec<i32>, memo: &mut FnvHashMap<(Vec<i32>, Vec<i32>, i32), i32>, clock: i32) -> i32 {
+fn nav( bp: &Vec<[i32; 4]>, max_cost: &[i32; 4], robots: &mut [i32; 4], inv: &mut [i32; 4], memo: &mut FnvHashMap<([i32; 4], [i32; 4], i32), i32>, clock: i32) -> i32 {
 
     // What robots can I build next with the resources I'm already getting?
     // How long does it take to build each robot?
@@ -133,14 +133,19 @@ fn solve1() -> usize {
     // let bp = sample();
     let bp = parse();
     let clock = 24;
-    let mut robots = vec![1, 0, 0, 0];
-    let mut inventory = vec![0, 0, 0, 0];
+    let mut robots = [1, 0, 0, 0];
+    let mut inventory = [0, 0, 0, 0];
 
     let mut total = 0;
     for (id, plan) in bp.iter().enumerate() {
-        let mut memo: FnvHashMap<(Vec<i32>, Vec<i32>, i32), i32> = FnvHashMap::default();
-        let plan = plan.iter().map(|tpl| vec![tpl.0, tpl.1, tpl.2, 0]).collect::<Vec<Vec<i32>>>();
-        let max_cost:Vec<i32> = (0..3).map(|i| plan.iter().map(|x| x[i]).max().unwrap()).collect();
+        let mut memo: FnvHashMap<([i32; 4], [i32; 4], i32), i32> = FnvHashMap::default();
+        let plan = plan.iter().map(|tpl| [tpl.0, tpl.1, tpl.2, 0]).collect::<Vec<[i32; 4]>>();
+        let max_cost:[i32; 4] = [
+                plan.iter().map(|x| x[0]).max().unwrap(),
+                plan.iter().map(|x| x[1]).max().unwrap(),
+                plan.iter().map(|x| x[2]).max().unwrap(),
+                plan.iter().map(|x| x[3]).max().unwrap(),
+        ];
 
         // println!("Plan: {:?}", &plan);
         let score = nav(&plan, &max_cost, &mut robots, &mut inventory, &mut memo, clock);
@@ -157,14 +162,19 @@ fn solve1() -> usize {
 fn solve2() -> usize {
     let bp = parse();
     let clock = 32;
-    let mut robots = vec![1, 0, 0, 0];
-    let mut inventory = vec![0, 0, 0, 0];
+    let mut robots = [1i32, 0, 0, 0];
+    let mut inventory = [0i32, 0, 0, 0];
 
     let mut total = 1;
     for (_, plan) in bp.iter().take(3).enumerate() {
-        let mut memo: FnvHashMap<(Vec<i32>, Vec<i32>, i32), i32> = FnvHashMap::default();
-        let plan = plan.iter().map(|tpl| vec![tpl.0, tpl.1, tpl.2, 0]).collect::<Vec<Vec<i32>>>();
-        let max_cost:Vec<i32> = (0..3).map(|i| plan.iter().map(|x| x[i]).max().unwrap()).collect();
+        let mut memo: FnvHashMap<([i32; 4], [i32; 4], i32), i32> = FnvHashMap::default();
+        let plan = plan.iter().map(|tpl| [tpl.0, tpl.1, tpl.2, 0]).collect::<Vec<[i32; 4]>>();
+        let max_cost:[i32; 4] = [
+                plan.iter().map(|x| x[0]).max().unwrap(),
+                plan.iter().map(|x| x[1]).max().unwrap(),
+                plan.iter().map(|x| x[2]).max().unwrap(),
+                plan.iter().map(|x| x[3]).max().unwrap(),
+        ];
         let score = nav(&plan, &max_cost, &mut robots, &mut inventory, &mut memo, clock);
         total *= score;
         // let id = id+1;
