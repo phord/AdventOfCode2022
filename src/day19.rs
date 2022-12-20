@@ -22,6 +22,7 @@ use crate::*;
 //      -> Obsidian needs [6, 8, 0]  ->
 //          -> Geode needs [9, 8, 12]
 type Blueprint = Vec<(i32, i32, i32)>;
+#[allow(unused)]
 fn sample() -> Vec<Blueprint> {
     vec![
         vec![ (4, 0, 0), (2, 0, 0), (3, 14, 0),  (2, 0, 7),],
@@ -75,43 +76,53 @@ fn time_needed(cost: &Vec<i32>, robots: &Vec<i32>, inv: &Vec<i32>) -> i32 {
 }
 
 
-fn nav( bp: &Vec<Vec<i32>>, max_cost: &Vec<i32>, robots: &mut Vec<i32>, inv: &mut Vec<i32>, clock: i32) -> i32 {
+fn nav( bp: &Vec<Vec<i32>>, max_cost: &Vec<i32>, robots: &mut Vec<i32>, inv: &mut Vec<i32>, memo: &mut FnvHashMap<(Vec<i32>, Vec<i32>, i32), i32>, clock: i32) -> i32 {
 
     // What robots can I build next with the resources I'm already getting?
     // How long does it take to build each robot?
-    let options:Vec<i32> = bp.iter().map(|plan| {
+    let state = (robots.clone(), inv.clone(), clock);
+    let geodes = inv[3];
+
+    if memo.contains_key(&state) {
+            // println!("Memo hit: {} {:?}", memo[&state], &state);
+            geodes + memo[&state]
+    } else {
+        let options:Vec<i32> = bp.iter().map(|plan| {
             time_needed(plan, &robots, &inv)
         })
         .collect();
 
-    if options.iter().all(|t| *t >= clock ) {
-        // No more robots to build. Count total geodes.
-        inv[3] + robots[3] * clock
-    } else {
-        // Heuristic: Don't produce more resources than we can use
-        let options:Vec<_> = options.iter().enumerate()
-            .filter(|(_, time)| **time <= clock)
-            .filter(|(i, _)| *i == 3 || robots[*i] < max_cost[*i] )
-            // .map(|(b, t)| (robots[b]/b, b, t))
-            .collect();
+        if options.iter().all(|t| *t >= clock ) {
+            // No more robots to build. Count total geodes.
+            inv[3] + robots[3] * clock
+        } else {
+            // Heuristic: Don't produce more resources than we can use
+            let options:Vec<_> = options.iter().enumerate()
+                .filter(|(_, time)| **time <= clock)
+                .filter(|(i, _)| *i == 3 || robots[*i] < max_cost[*i] )
+                // .map(|(b, t)| (robots[b]/b, b, t))
+                .collect();
 
-        options.iter()
-        .map(| (bot, time) | {
-            // Build a robot in the future.
-            // We won't benefit until t+1, so skip ahead
-            let time = **time + 1;
-            for i in 0..4 {
-                inv[i] +=  time * robots[i] - bp[*bot][i];
-            }
-            robots[*bot] += 1;
-            let result = nav(bp, max_cost, robots, inv, clock - time);
-            robots[*bot] -= 1;
-            for i in 0..4 {
-                inv[i] -=  time * robots[i] - bp[*bot][i];
-            }
+            let score = options.iter().map(| (bot, time) | {
+                // Build a robot in the future.
+                // We won't benefit until t+1, so skip ahead
+                let time = **time + 1;
+                for i in 0..4 {
+                    inv[i] +=  time * robots[i] - bp[*bot][i];
+                }
+                robots[*bot] += 1;
+                let result = nav(bp, max_cost, robots, inv, memo, clock - time);
+                robots[*bot] -= 1;
+                for i in 0..4 {
+                    inv[i] -=  time * robots[i] - bp[*bot][i];
+                }
 
-            result
-        }).max().unwrap()
+                result
+            }).max().unwrap();
+            // println!("Memo store: {} {:?}", score - geodes, &state);
+            memo.insert(state, score - geodes);
+            score
+        }
     }
         // Wait to build it, then build it, then descend
 }
@@ -127,11 +138,12 @@ fn solve1() -> usize {
 
     let mut total = 0;
     for (id, plan) in bp.iter().enumerate() {
+        let mut memo: FnvHashMap<(Vec<i32>, Vec<i32>, i32), i32> = FnvHashMap::default();
         let plan = plan.iter().map(|tpl| vec![tpl.0, tpl.1, tpl.2, 0]).collect::<Vec<Vec<i32>>>();
         let max_cost:Vec<i32> = (0..3).map(|i| plan.iter().map(|x| x[i]).max().unwrap()).collect();
 
         // println!("Plan: {:?}", &plan);
-        let score = nav(&plan, &max_cost, &mut robots, &mut inventory, clock);
+        let score = nav(&plan, &max_cost, &mut robots, &mut inventory, &mut memo, clock);
         let id = id+1;
         let quality = id as i32 * score;
         total += quality;
@@ -150,9 +162,10 @@ fn solve2() -> usize {
 
     let mut total = 1;
     for (_, plan) in bp.iter().take(3).enumerate() {
+        let mut memo: FnvHashMap<(Vec<i32>, Vec<i32>, i32), i32> = FnvHashMap::default();
         let plan = plan.iter().map(|tpl| vec![tpl.0, tpl.1, tpl.2, 0]).collect::<Vec<Vec<i32>>>();
         let max_cost:Vec<i32> = (0..3).map(|i| plan.iter().map(|x| x[i]).max().unwrap()).collect();
-        let score = nav(&plan, &max_cost, &mut robots, &mut inventory, clock);
+        let score = nav(&plan, &max_cost, &mut robots, &mut inventory, &mut memo, clock);
         total *= score;
         // let id = id+1;
         // println!("{}. Score: {}  Total: {}", id, score, total);
