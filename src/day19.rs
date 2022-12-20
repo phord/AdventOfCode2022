@@ -6,6 +6,20 @@ use crate::*;
 //------------------------------ PARSE INPUT
 // Blueprint 1: Each ore robot costs 4 ore. Each clay robot costs 2 ore. Each obsidian robot costs 3 ore and 14 clay. Each geode robot costs 2 ore and 7 obsidian.
 // Blueprint 2: Each ore robot costs 2 ore. Each clay robot costs 3 ore. Each obsidian robot costs 3 ore and 8 clay. Each geode robot costs 3 ore and 12 obsidian.
+
+//  Each ore robot costs 2 ore.
+//  Each clay robot costs 3 ore.
+//  Each obsidian robot costs 3 ore and 8 clay.
+//  Each geode robot costs 3 ore and 12 obsidian.
+
+// Goal: Maximize geode robots
+//  (2, 0, 0), (3, 0, 0), (3, 8, 0) , (3, 0, 12),
+// Geode robot needs [3, 0, 12]
+// Obsidian needs [3, 8, 0]  ->
+//    -> Geode needs [6, 8, 12]
+// Clay needs [3, 0, 0]
+//      -> Obsidian needs [6, 8, 0]  ->
+//          -> Geode needs [9, 8, 12]
 type Blueprint = Vec<(i32, i32, i32)>;
 fn sample() -> Vec<Blueprint> {
     vec![
@@ -60,7 +74,7 @@ fn time_needed(cost: &Vec<i32>, robots: &Vec<i32>, inv: &Vec<i32>) -> i32 {
 }
 
 
-fn nav( bp: &Vec<Vec<i32>>, robots: &mut Vec<i32>, inv: &mut Vec<i32>, clock: i32) -> i32 {
+fn nav( bp: &Vec<Vec<i32>>, ratio: &Vec<i32>, robots: &mut Vec<i32>, inv: &mut Vec<i32>, clock: i32) -> i32 {
 
     // What robots can I build next with the resources I'm already getting?
     // How long does it take to build each robot?
@@ -77,8 +91,15 @@ fn nav( bp: &Vec<Vec<i32>>, robots: &mut Vec<i32>, inv: &mut Vec<i32>, clock: i3
         // No more robots to build. Count total geodes.
         inv[3] + robots[3] * clock
     } else {
-        let mut options:Vec<_> = options.iter().enumerate()
+        // Heuristic: Build robots we need more of, and not ones we have too many of
+        let robot_ratio = robots.iter().enumerate().map(|(i, x)| *x as f64 / ratio[i] as f64 ).collect::<Vec<f64>>();
+        let avgr: f64 = robot_ratio.iter().filter(|x| **x > 0.0).sum::<f64>() / (robot_ratio.len()-1) as f64;
+        let robot_scale = robot_ratio.iter().map(|x| *x as f64 / avgr ).collect::<Vec<f64>>();
+        println!("{}  ratio: {:?} {:?}  {:?}  {:?}", clock, &robots, &ratio, &robot_ratio, &robot_scale);
+
+        let options:Vec<_> = options.iter().enumerate()
             .filter(|(_, time)| **time <= clock)
+            .filter(|(i, _)| *i == 3 || robot_scale[*i] < 5.0 )
             // .map(|(b, t)| (robots[b]/b, b, t))
             .collect();
 
@@ -95,7 +116,7 @@ fn nav( bp: &Vec<Vec<i32>>, robots: &mut Vec<i32>, inv: &mut Vec<i32>, clock: i3
                 inv[i] +=  time * robots[i] - bp[*bot][i];
             }
             robots[*bot] += 1;
-            let result = nav(bp, robots, inv, clock - time);
+            let result = nav(bp, ratio, robots, inv, clock - time);
             robots[*bot] -= 1;
             for i in 0..4 {
                 inv[i] -=  time * robots[i] - bp[*bot][i];
@@ -119,8 +140,9 @@ fn solve1() -> usize {
     let mut total = 0;
     for (id, plan) in bp.iter().enumerate() {
         let plan = plan.iter().map(|tpl| vec![tpl.0, tpl.1, tpl.2, 0]).collect::<Vec<Vec<i32>>>();
+
         println!("Plan: {:?}", &plan);
-        let score = nav(&plan, &mut robots, &mut inventory, clock);
+        let score = nav(&plan, &vec![], &mut robots, &mut inventory, clock);
         let id = id+1;
         let quality = id as i32 * score;
         total += quality;
@@ -134,15 +156,17 @@ fn solve1() -> usize {
 fn solve2() -> usize {
     let bp = sample();
     let bp = parse();
-    let clock = 32;
+    let clock = 24; // 32;
     let mut robots = vec![1, 0, 0, 0];
     let mut inventory = vec![0, 0, 0, 0];
 
     let mut total = 1;
     for (id, plan) in bp.iter().enumerate() {
         let plan = plan.iter().map(|tpl| vec![tpl.0, tpl.1, tpl.2, 0]).collect::<Vec<Vec<i32>>>();
-        println!("Plan: {:?}", &plan);
-        let score = nav(&plan, &mut robots, &mut inventory, clock);
+        let mut ratio = plan.iter().fold(vec![0,0,0,0], |a, t| a.iter().zip(t).map(|(x,y)| x+y).collect());
+        ratio[3] = 10;
+        println!("Plan: {:?}  ratio: {:?}", &plan, &ratio);
+        let score = nav(&plan, &ratio, &mut robots, &mut inventory, clock);
         let id = id+1;
         total *= score;
         println!("{}. Score: {}  Total: {}", id, score, total);
