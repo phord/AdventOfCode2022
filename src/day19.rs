@@ -1,4 +1,3 @@
-use fnv::FnvHashMap;
 #[allow(unused)]
 use yaah::aoc;
 #[allow(unused)]
@@ -76,29 +75,32 @@ fn time_needed(cost: &[i32; 4], robots: &[i32; 4], inv: &[i32; 4]) -> i32 {
 }
 
 
-fn nav( bp: &Vec<[i32; 4]>, max_cost: &[i32; 4], robots: &mut [i32; 4], inv: &mut [i32; 4], memo: &mut FnvHashMap<([i32; 4], [i32; 4], i32), i32>, clock: i32) -> i32 {
+fn nav( bp: &Vec<[i32; 4]>, max_cost: &[i32; 4], robots: &mut [i32; 4], inv: &mut [i32; 4], best: &mut i32 , clock: i32) -> i32 {
 
     // What robots can I build next with the resources I'm already getting?
     // How long does it take to build each robot?
-    let state = (robots.clone(), inv.clone(), clock);
-    let geodes = inv[3];
 
-    if memo.contains_key(&state) {
-            // println!("Memo hit: {} {:?}", memo[&state], &state);
-            geodes + memo[&state]
+    // Cut off paths that are already losers
+    let so_far = clock * robots[3] + inv[3] ;
+    let potential = clock * (clock - 1) + so_far;
+    if potential < *best {
+        return 0;
+    } else if clock < 2 {
+        // No more robots to build. Count total geodes.
+        so_far
     } else {
         let options:Vec<i32> = bp.iter().map(|plan| {
             time_needed(plan, &robots, &inv)
         })
+        .filter(|time| *time < clock)
         .collect();
 
-        if options.iter().all(|t| *t >= clock ) {
-            // No more robots to build. Count total geodes.
-            inv[3] + robots[3] * clock
+        if options.len() == 0 {
+            // No more robots to build. Return current score.
+            so_far
         } else {
             // Heuristic: Don't produce more resources than we can use
             let options:Vec<_> = options.iter().enumerate()
-                .filter(|(_, time)| **time <= clock)
                 .filter(|(i, _)| *i == 3 || robots[*i] < max_cost[*i] )
                 // .map(|(b, t)| (robots[b]/b, b, t))
                 .collect();
@@ -111,7 +113,7 @@ fn nav( bp: &Vec<[i32; 4]>, max_cost: &[i32; 4], robots: &mut [i32; 4], inv: &mu
                     inv[i] +=  time * robots[i] - bp[*bot][i];
                 }
                 robots[*bot] += 1;
-                let result = nav(bp, max_cost, robots, inv, memo, clock - time);
+                let result = nav(bp, max_cost, robots, inv, best, clock - time);
                 robots[*bot] -= 1;
                 for i in 0..4 {
                     inv[i] -=  time * robots[i] - bp[*bot][i];
@@ -119,12 +121,12 @@ fn nav( bp: &Vec<[i32; 4]>, max_cost: &[i32; 4], robots: &mut [i32; 4], inv: &mu
 
                 result
             }).max().unwrap();
-            // println!("Memo store: {} {:?}", score - geodes, &state);
-            memo.insert(state, score - geodes);
+            if score > *best {
+                *best = score;
+            }
             score
         }
     }
-        // Wait to build it, then build it, then descend
 }
 
 #[test] fn test_day19_part1() { assert_eq!(solve1(), _ANS1); }
@@ -138,7 +140,7 @@ fn solve1() -> usize {
 
     let mut total = 0;
     for (id, plan) in bp.iter().enumerate() {
-        let mut memo: FnvHashMap<([i32; 4], [i32; 4], i32), i32> = FnvHashMap::default();
+        let mut best = 0;
         let plan = plan.iter().map(|tpl| [tpl.0, tpl.1, tpl.2, 0]).collect::<Vec<[i32; 4]>>();
         let max_cost:[i32; 4] = [
                 plan.iter().map(|x| x[0]).max().unwrap(),
@@ -148,7 +150,7 @@ fn solve1() -> usize {
         ];
 
         // println!("Plan: {:?}", &plan);
-        let score = nav(&plan, &max_cost, &mut robots, &mut inventory, &mut memo, clock);
+        let score = nav(&plan, &max_cost, &mut robots, &mut inventory, &mut best, clock);
         let id = id+1;
         let quality = id as i32 * score;
         total += quality;
@@ -167,7 +169,7 @@ fn solve2() -> usize {
 
     let mut total = 1;
     for (_, plan) in bp.iter().take(3).enumerate() {
-        let mut memo: FnvHashMap<([i32; 4], [i32; 4], i32), i32> = FnvHashMap::default();
+        let mut best = 0;
         let plan = plan.iter().map(|tpl| [tpl.0, tpl.1, tpl.2, 0]).collect::<Vec<[i32; 4]>>();
         let max_cost:[i32; 4] = [
                 plan.iter().map(|x| x[0]).max().unwrap(),
@@ -175,7 +177,7 @@ fn solve2() -> usize {
                 plan.iter().map(|x| x[2]).max().unwrap(),
                 plan.iter().map(|x| x[3]).max().unwrap(),
         ];
-        let score = nav(&plan, &max_cost, &mut robots, &mut inventory, &mut memo, clock);
+        let score = nav(&plan, &max_cost, &mut robots, &mut inventory, &mut best, clock);
         total *= score;
         // let id = id+1;
         // println!("{}. Score: {}  Total: {}", id, score, total);
