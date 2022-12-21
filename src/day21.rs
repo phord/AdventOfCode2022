@@ -4,6 +4,8 @@ use yaah::aoc;
 use crate::*;
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::cell::RefCell;
+
 
 //------------------------------ PARSE INPUT
 
@@ -17,7 +19,7 @@ enum Op {
 }
 #[derive(Clone, Debug)]
 enum Expr {
-    Some(Op, Rc<Expr>, Rc<Expr>),
+    Some(Op, Rc<RefCell<Expr>>, Rc<RefCell<Expr>>),
     Variable(&'static str),
     Literal(i64),
     Unknown(&'static str),
@@ -36,10 +38,10 @@ fn parse(input: &'static str) -> HashMap<&'static str, Expr> {
                 let a = Expr::Variable(l[1]);
                 let b = Expr::Variable(l[3]);
                 match l[2] {
-                    "+" => Expr::Some(Op::Plus,Rc::new(a),Rc::new(b)),
-                    "-" => Expr::Some(Op::Minus,Rc::new(a),Rc::new(b)),
-                    "*" => Expr::Some(Op::Times,Rc::new(a),Rc::new(b)),
-                    "/" => Expr::Some(Op::Divide,Rc::new(a),Rc::new(b)),
+                    "+" => Expr::Some(Op::Plus,Rc::new(RefCell::new(a)),Rc::new(RefCell::new(b))),
+                    "-" => Expr::Some(Op::Minus,Rc::new(RefCell::new(a)),Rc::new(RefCell::new(b))),
+                    "*" => Expr::Some(Op::Times,Rc::new(RefCell::new(a)),Rc::new(RefCell::new(b))),
+                    "/" => Expr::Some(Op::Divide,Rc::new(RefCell::new(a)),Rc::new(RefCell::new(b))),
                     _ => unimplemented!(),
                 }
             } else {
@@ -57,16 +59,16 @@ fn parse(input: &'static str) -> HashMap<&'static str, Expr> {
 fn apply (a: &Expr, b: &Expr, f: fn(i64, i64) -> i64) -> Expr {
     match (a, b) {
         (Expr::Literal(x), Expr::Literal(y)) => Expr::Literal(f(*x,*y)),
-        (x,y) => Expr::Some(Op::Times, Rc::new(x.clone()), Rc::new(y.clone())),
+        (x,y) => Expr::Some(Op::Times, Rc::new(RefCell::new(x.clone())), Rc::new(RefCell::new(y.clone()))),
     }
 }
 
 fn try_eval( eq: &Expr, vars: &HashMap<&'static str, Expr>) -> Expr {
     let result = match eq {
-        Expr::Some(Op::Plus, a, b) => apply(&try_eval(&*a, vars), &try_eval(&*b, vars), |x,y| x + y),
-        Expr::Some(Op::Minus, a, b) => apply(&try_eval(&*a, vars), &try_eval(&*b, vars), |x,y| x - y),
-        Expr::Some(Op::Times, a, b) => apply(&try_eval(&*a, vars), &try_eval(&*b, vars), |x,y| x * y),
-        Expr::Some(Op::Divide, a, b) => apply(&try_eval(&*a, vars), &try_eval(&*b, vars), |x,y| x / y),
+        Expr::Some(Op::Plus, a, b) => apply(&try_eval(&*a.borrow(), vars), &try_eval(&*b.borrow(), vars), |x,y| x + y),
+        Expr::Some(Op::Minus, a, b) => apply(&try_eval(&*a.borrow(), vars), &try_eval(&*b.borrow(), vars), |x,y| x - y),
+        Expr::Some(Op::Times, a, b) => apply(&try_eval(&*a.borrow(), vars), &try_eval(&*b.borrow(), vars), |x,y| x * y),
+        Expr::Some(Op::Divide, a, b) => apply(&try_eval(&*a.borrow(), vars), &try_eval(&*b.borrow(), vars), |x,y| x / y),
         Expr::Some(Op::Equals, _, _) => unimplemented!(),
 
         Expr::Variable(x) => try_eval(&vars[x], &vars),
@@ -75,6 +77,47 @@ fn try_eval( eq: &Expr, vars: &HashMap<&'static str, Expr>) -> Expr {
     };
     result
 }
+
+fn try_invert( eq: &Expr, accum: i64, vars: &HashMap<&'static str, Expr>) -> i64 {
+    let result = match eq {
+        Expr::Some(Op::Plus, a, b) => {
+            match (&*a.borrow(), &*b.borrow()) {
+                (Expr::Literal(x), b) => try_invert(&b, accum - x, vars),
+                (b, Expr::Literal(x)) => try_invert(&b, accum - x, vars),
+                _ => panic!(),
+            }
+        },
+        Expr::Some(Op::Minus, a, b) => {
+            match (&*a.borrow(), &*b.borrow()) {
+                (Expr::Literal(x), b) => try_invert(&b, x - accum , vars),
+                (b, Expr::Literal(x)) => try_invert(&b, accum + x, vars),
+                _ => panic!(),
+            }
+        },
+        Expr::Some(Op::Divide, a, b) => {
+            match (&*a.borrow(), &*b.borrow()) {
+                (Expr::Literal(x), b) => try_invert(&b, x / accum , vars),
+                (b, Expr::Literal(x)) => try_invert(&b, accum * x, vars),
+                _ => panic!(),
+            }
+        },
+        Expr::Some(Op::Times, a, b) => {
+            match (&*a.borrow(), &*b.borrow()) {
+                (Expr::Literal(x), b) => try_invert(&b, accum / x, vars),
+                (b, Expr::Literal(x)) => try_invert(&b, accum / x, vars),
+                _ => panic!(),
+            }
+        },
+        Expr::Some(Op::Equals, _, _) => unimplemented!(),
+
+        Expr::Variable(x) => panic!(),
+        // Expr::Literal(x) => Expr::Literal(*x),
+        Expr::Unknown(x) => accum,
+        _ => panic!(),
+    };
+    result
+}
+
 
 
 fn eval( eq: &Expr, vars: &HashMap<&'static str, Expr>) -> i64 {
@@ -89,11 +132,11 @@ fn eval( eq: &Expr, vars: &HashMap<&'static str, Expr>) -> i64 {
 
 fn prt( eq: &Expr, vars: &HashMap<&'static str, Expr>) -> String {
     let result = match eq {
-        Expr::Some(Op::Plus, a, b) => "( ".to_string() + &prt(&*a, vars) + " + " + &prt(&*b, vars) + " )",
-        Expr::Some(Op::Minus, a, b) => "( ".to_string() + &prt(&*a, vars) + " - " + &prt(&*b, vars) + " )",
-        Expr::Some(Op::Times, a, b) => "( ".to_string() + &prt(&*a, vars) + " * " + &prt(&*b, vars) + " )",
-        Expr::Some(Op::Divide, a, b) => "( ".to_string() + &prt(&*a, vars) + " / " +  &prt(&*b, vars) + " )",
-        Expr::Some(Op::Equals, a, b) => "( ".to_string() + &prt(&*a, vars) + " = " +  &prt(&*b, vars) + " )",
+        Expr::Some(Op::Plus, a, b) => "( ".to_string() + &prt(&*a.borrow(), vars) + " + " + &prt(&*b.borrow(), vars) + " )",
+        Expr::Some(Op::Minus, a, b) => "( ".to_string() + &prt(&*a.borrow(), vars) + " - " + &prt(&*b.borrow(), vars) + " )",
+        Expr::Some(Op::Times, a, b) => "( ".to_string() + &prt(&*a.borrow(), vars) + " * " + &prt(&*b.borrow(), vars) + " )",
+        Expr::Some(Op::Divide, a, b) => "( ".to_string() + &prt(&*a.borrow(), vars) + " / " +  &prt(&*b.borrow(), vars) + " )",
+        Expr::Some(Op::Equals, a, b) => "( ".to_string() + &prt(&*a.borrow(), vars) + " = " +  &prt(&*b.borrow(), vars) + " )",
 
         Expr::Variable(x) => prt(&vars[*x], vars),
         Expr::Literal(x) => format!(" {} ", x),
@@ -107,7 +150,7 @@ fn solve1(input: &'static str) -> i64 {
 
     eval(&Expr::Variable("root"), &sim)
 }
-#[test] fn test_day21_part2() { assert_eq!(solve2(_SAMPLE), _ANS2); }
+#[test] fn test_day21_part2() { assert_eq!(solve2(_SAMPLE), 301); }
 
 fn solve2(input: &'static str) -> i64 {
     let mut sim = parse(input);
@@ -115,7 +158,16 @@ fn solve2(input: &'static str) -> i64 {
     sim.insert("humn", Expr::Unknown("humn"));
 
     match &sim["root"] {
-        Expr::Some(_, a, b) =>  println!("{} == {}", prt(&try_eval(&*a, &sim), &sim), prt(&try_eval(&*b, &sim), &sim) ),
+        Expr::Some(_, a, b) =>  {
+            let left = &try_eval(&*a.borrow(), &sim);
+            let right = &try_eval(&*b.borrow(), &sim);
+            return match (left, right) {
+                    (Expr::Literal(x), b) => try_invert(b, *x, &sim),
+                    (b, Expr::Literal(x)) => try_invert(b, *x, &sim),
+                    _ => panic!(),
+                };
+            // println!("{} == {}", prt(&try_eval(&*a.borrow(), &sim), &sim), prt(&try_eval(&*b.borrow(), &sim), &sim) ),
+        },
         _ => panic!(),
     };
 
