@@ -82,7 +82,7 @@ fn nav( bp: &Vec<[i32; 4]>, max_cost: &[i32; 4], robots: &mut [i32; 4], inv: &mu
 
     // Cut off paths that are already losers
     let so_far = clock * robots[3] + inv[3] ;
-    let potential = clock * (clock - 1) + so_far;
+    let potential = clock * (clock - 1)/2 + so_far;
     if potential < *best {
         return 0;
     } else if clock < 2 {
@@ -102,7 +102,6 @@ fn nav( bp: &Vec<[i32; 4]>, max_cost: &[i32; 4], robots: &mut [i32; 4], inv: &mu
             // Heuristic: Don't produce more resources than we can use
             let options:Vec<_> = options.iter().enumerate()
                 .filter(|(i, _)| *i == 3 || robots[*i] < max_cost[*i] )
-                // .map(|(b, t)| (robots[b]/b, b, t))
                 .collect();
 
             let score = options.iter().map(| (bot, time) | {
