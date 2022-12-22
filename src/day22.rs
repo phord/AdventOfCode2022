@@ -8,7 +8,7 @@ use std::collections::HashMap;
 
 
 type Grid = HashMap<Point, Cell>;
-type Point = (usize, usize);
+type Point = (i32, i32);
 
 enum Cell {
     Floor,
@@ -25,9 +25,7 @@ enum Direction {
 }
 use nom::{
     IResult, //error::Error,
-    bytes::complete::{tag},
-    character::complete::{alpha1, multispace0, digit1, one_of},
-    branch::alt,
+    character::complete::{multispace0, digit1, one_of},
     combinator::opt,
 };
 
@@ -57,7 +55,7 @@ fn parse(input: &'static str) -> (Grid, Vec<(usize, Direction)>) {
             break;
         }
         for (col, ch) in line.chars().enumerate().filter(|(_, ch)| *ch != ' ') {
-            map.insert((row, col),
+            map.insert((row as i32, col as i32),
                 match ch {
                     '#' => Cell::Wall,
                     '.' => Cell::Floor,
@@ -108,107 +106,170 @@ fn next2(map: &Grid, pos: Point, dir: &Direction) -> Option<(Point, Direction)> 
     let mut dir = dir;
 
     match dir {
-        Direction::Up => {
-            if row == 0 {
-                // 1-2: Back to bottom
-                col = width - 1 - (col % width);
-                row = width;
-                dir = &Direction::Down;
-            } else if row == width * 2 && cface == 3{
-                // 6-4: right to top
-                row = width * 2 - 1 - (col % width);
-                col = width * 3 - 1;
-                dir = &Direction::Left;
-            } else if row == width && cface == 1 {
-                // 3-1: left to back
-                row = col % width;
-                col = width * 2;
-                dir = &Direction::Right;
-            } else if row == width && cface == 0 {
-                // 2-1: bottom to back
-                row = 0;
-                col = width - col;
-                dir = &Direction::Down;
-            } else {
-                    row -= 1;
-            }
-        },
-        Direction::Down => {
-            if row == width * 3 - 1 && cface == 2 {
-                // 5-2: Front to bottom
-                col = width - 1 - (col % width);
-                row = width * 2 - 1;
-                dir = &Direction::Up;
-            } else if row == width*3 - 1 && cface == 3 {
-                // 6-2: Right to bottom
-                row = width * 2 - col % width - 1;
-                col = 0;
-                dir = &Direction::Left;
-            } else if row == width*2 - 1 && cface == 1 {
-                // 3-5: Left to front
-                row = width * 3 - col % width - 1;
-                col = width * 2;
-                dir = &Direction::Right;
-            } else if row == width*2 - 1 && cface == 0 {
-                // 2-5: Bottom to front
-                row = width * 3 - 1;
-                col = width * 3 - col - 1;
-                dir = &Direction::Up;
-            } else {
-                row += 1;
-            }
-        },
-        Direction::Left => {
-            if col == width * 2 && rface == 0 {
-                // 1-3: Back to left
-                col = width + row;
-                row = width ;
-                dir = &Direction::Up;
-            } else if col == 0 {
-                // 2-6 : Bottom to right
-                col = width * 3 - 1 - row % width;
-                row = width * 3 - 1;
-                dir = &Direction::Up;
-            } else if row == width*2 - 1 && cface == 1 {
-                // 5-3: Front to left
-                col = width * 2 - 1 - row % width;
-                row = width * 2 - 1;
-                dir = &Direction::Up;
-            } else {
-                col -= 1;
-            }
-        },
-        Direction::Right => {
-            if col == width * 3 - 1 && rface == 0 {
-                // 1-6: Back to right
-                col = width * 4 - 1;
-                row = width * 3 - row;
-                dir = &Direction::Left;
-            } else if col == width * 3 - 1 && rface == 1 {
-                // 4-6 : Top to right
-                col = width * 4 - 1 - row % width;
-                row = width * 2;
-                dir = &Direction::Down;
-            } else if row == width * 4 - 1 && cface == 2 {
-                // 6-1: Right to back
-                col = width * 3 - 1;
-                row = width - 1 - row % width;
-                dir = &Direction::Left;
-            } else {
-                col += 1;
-            }
-
-        }
+        Direction::Up => row -= 1,
+        Direction::Down => row += 1,
+        Direction::Left => col -= 1,
+        Direction::Right => col += 1,
         Direction::Same => panic!(),
     };
     let next = (row, col);
 
     if !map.contains_key(&next) {
+        // We've walked off an edge. Which edge is it and how do we fix this?
+        // dbg!(pos);
+        // dbg!(dir);
+        // dbg!(next);
+
+        // Shape of my input:
+        //
+        //           6  6
+        //           ^  ^
+        //           |  |
+        //         22221111
+        //         22221111
+        //    5 <- 22221111 -> 4
+        //         22221111
+        //         3333  ^
+        //    5 +- 3333  |
+        //      |  3333 -+ 1
+        //      v  3333
+        //     55554444
+        //2 -> 55554444 -> 1
+        //     55554444
+        //     55554444
+        //     6666  ^
+        //2 <- 6666  |
+        //     6666 -+ 4
+        //     6666
+        //      |
+        //      v
+        //      1
+        //
+        // To walk around a cube map, when we enter a "gap" we need to
+        // rotate 90 degrees about the quadrant corner.  For example,
+        // when heading Down on face 1, we walk onto face 3 and turn_right
+        // to go Left.  Similarly when we walk Up from F5, we turn_right
+        // to head right on F3.  But walking Left off of F2 requires two
+        // left-turns (to head Right) on F5.  Why left turns and how do we
+        // decide to rotate twice to reach our common edge on F5?
+        // I suppose I can map it all by hand.  Blast!
+
+        match dir {
+            Direction::Same => panic!(),
+            Direction::Up => {
+                if cface == 0 {
+                    // 5->3
+                    // println!("  5->3");
+                    row = width + col;
+                    col = width;
+                    dir = &Direction::Right;
+                } else if cface == 1 {
+                    // 2->6
+                    // println!("  2->6");
+                    row = width * 3 + col % width;
+                    col = 0;
+                    dir = &Direction::Right;
+                } else if cface == 2 {
+                    // 1->6
+                    // println!("  1->6");
+                    col = width - col % width - 1;
+                    row = width * 4 - 1;
+                    dir = &Direction::Up;
+                } else {
+                    panic!();
+                }
+            },
+            Direction::Down => {
+                if cface == 0 {
+                    // 6->1
+                    // println!("  6->1");
+                    col = width * 3 - col % width - 1;
+                    row = 0;
+                    dir = &Direction::Down;
+                } else if cface == 1 {
+                    // 4->6
+                    // println!("  4->6");
+                    col = width - 1;
+                    row = width * 3 + col % width;
+                    dir = &Direction::Left;
+                } else if cface == 2 {
+                    // 1->3
+                    // println!("  1->3");
+                    row = width + col % width;
+                    col = width * 2 - 1;
+                    dir = &Direction::Left;
+                } else {
+                    panic!();
+                }
+            },
+            Direction::Right => {
+                if rface == 0 {
+                    // 1->4
+                    // println!("  1->4");
+                    row = width * 3 - row % width - 1;
+                    col = width * 2 - 1;
+                    dir = &Direction::Left;
+                } else if rface == 1 {
+                    // 3->1
+                    // println!("  3->1");
+                    col = width * 2 + row % width;
+                    row = width - 1;
+                    dir = &Direction::Up;
+                } else if rface == 2 {
+                    // 4->1
+                    // println!("  4->1");
+                    col = width *3 - 1;
+                    row = width - row % width - 1;
+                    dir = &Direction::Left;
+                } else if rface == 3 {
+                    // 6->4
+                    // println!("  6->4");
+                    col = width + row % width;
+                    row = width * 3 - 1;
+                    dir = &Direction::Up;
+                } else {
+                    panic!();
+                }
+            },
+            Direction::Left => {
+                if rface == 0 {
+                    // 2->5
+                    // println!("  2->5");
+                    col = 0;
+                    row = width * 3 - row % width - 1;
+                    dir = &Direction::Right;
+                } else if rface == 1 {
+                    // 3->5
+                    // println!("  3->5");
+                    col = row % width;
+                    row = width * 2;
+                    dir = &Direction::Up;
+                } else if rface == 2 {
+                    // 5->2
+                    // println!("  5->2");
+                    col = width;
+                    row = width - row % width;
+                    dir = &Direction::Right;
+                } else if rface == 3 {
+                    // 6->2
+                    // println!("  6->2");
+                    col = width + row % width;
+                    row = 0;
+                    dir = &Direction::Up;
+                } else {
+                    panic!();
+                }
+            },
+        }
+    }
+
+    let next = (row, col);
+    if !map.contains_key(&next) {
+        // We've walked off an edge. Which edge is it and how do we fix this?
         dbg!(pos);
         dbg!(dir);
         dbg!(next);
     }
-
     match map[&next] {
         Cell::Floor => Some((next, *dir)),
         _ => None,
@@ -244,9 +305,8 @@ fn is_floor(cell: &Cell) -> bool {
 
 //------------------------------ SOLVE
 
-fn solve1(input: &'static str) -> usize {
+fn solve1(input: &'static str) -> i32 {
     let (map, plan) = parse(input);
-    let dir = Direction::Up;
 
     let col = map.iter().filter(|((r,_),cell)| *r == 0 && is_floor(cell)).map(|((_,c),_)| *c).min().unwrap();
     let mut pos = (0, col);
@@ -272,7 +332,7 @@ fn solve1(input: &'static str) -> usize {
     score(&dir, &pos)
 }
 
-fn solve2(input: &'static str) -> usize {
+fn solve2(input: &'static str) -> i32 {
     let (map, plan) = parse(input);
 
     let col = map.iter().filter(|((r,_),cell)| *r == 0 && is_floor(cell)).map(|((_,c),_)| *c).min().unwrap();
@@ -299,7 +359,7 @@ fn solve2(input: &'static str) -> usize {
     score(&dir, &pos)
 }
 
-fn score(dir: &Direction, pos: &Point) -> usize {
+fn score(dir: &Direction, pos: &Point) -> i32 {
     let numdir = match dir {
         Direction::Right => 0,
         Direction::Down => 1,
@@ -315,7 +375,7 @@ fn score(dir: &Direction, pos: &Point) -> usize {
 
 #[allow(unused)]
 #[aoc(day22, part1)]
-fn day22_part1(input: &'static str) -> usize {
+fn day22_part1(input: &'static str) -> i32 {
     let ans = solve1(input);
     // assert_eq!(ans, 0);
     ans
@@ -323,7 +383,7 @@ fn day22_part1(input: &'static str) -> usize {
 
 #[allow(unused)]
 #[aoc(day22, part2)]
-fn day22_part2(input: &'static str) -> usize {
+fn day22_part2(input: &'static str) -> i32 {
     let ans = solve2(input);
     // assert_eq!(ans, 0);
     ans
@@ -350,5 +410,5 @@ const _SAMPLE: &str = "        ...#
         ......#.
 
 10R5L5R10L4R5L5";
-const _ANS1: usize = 1;
-const _ANS2: usize = 2;
+const _ANS1: i32 = 1;
+const _ANS2: i32 = 2;
