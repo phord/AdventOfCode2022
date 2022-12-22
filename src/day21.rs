@@ -3,8 +3,6 @@ use yaah::aoc;
 #[allow(unused)]
 use crate::*;
 use std::collections::HashMap;
-use std::rc::Rc;
-use std::cell::RefCell;
 
 
 //------------------------------ PARSE INPUT
@@ -61,7 +59,7 @@ fn parse_expr_binary(input: &'static str) -> IResult<&'static str, Expr> {
     let (i, arg1) = parse_expr_variable(input)?;
     let (i, op) = parse_expr_operator(i)?;
     let (i, arg2) = parse_expr_variable(i)?;
-    Ok((i, Expr::Some(op, Rc::new(RefCell::new(arg1)), Rc::new(RefCell::new(arg2)))))
+    Ok((i, Expr::Some(op, Box::new(arg1), Box::new(arg2))))
 }
 
 // Parse any kind of expression
@@ -80,7 +78,7 @@ enum Op {
 }
 #[derive(Clone, Debug)]
 enum Expr {
-    Some(Op, Rc<RefCell<Expr>>, Rc<RefCell<Expr>>),
+    Some(Op, Box<Expr>, Box<Expr>),
     Variable(&'static str),
     Literal(i64),
     Unknown(&'static str),
@@ -107,13 +105,13 @@ fn apply (a: &Expr, b: &Expr, op: &Op) -> Expr {
 
     match (a, b) {
         (Expr::Literal(x), Expr::Literal(y)) => Expr::Literal(f(*x,*y)),
-        (x,y) => Expr::Some(*op, Rc::new(RefCell::new(x.clone())), Rc::new(RefCell::new(y.clone()))),
+        (x,y) => Expr::Some(*op, Box::new(x.clone()), Box::new(y.clone())),
     }
 }
 
 fn try_eval( eq: &Expr, vars: &HashMap<&'static str, Expr>) -> Expr {
     let result = match eq {
-        Expr::Some(op, a, b) => apply(&try_eval(&*a.borrow(), vars), &try_eval(&*b.borrow(), vars), &op),
+        Expr::Some(op, a, b) => apply(&try_eval(&*a.clone(), vars), &try_eval(&*b.clone(), vars), &op),
 
         Expr::Variable(x) => try_eval(&vars[x], &vars),
         Expr::Literal(x) => Expr::Literal(*x),
@@ -133,8 +131,8 @@ fn try_invert( eq: &Expr, accum: i64, vars: &HashMap<&'static str, Expr>) -> i64
 
         // Some binary operator
         Expr::Some(op, left, right) => {
-            let left = &*left.borrow();
-            let right = &*right.borrow();
+            let left = &*left.clone();
+            let right = &*right.clone();
 
             // Either left or right expr has the unknown. Try to eval each to find out which does not.
             let left_eval = try_eval(&left, vars);
@@ -181,11 +179,11 @@ fn eval( eq: &Expr, vars: &HashMap<&'static str, Expr>) -> i64 {
 #[allow(unused)]
 fn prt( eq: &Expr, vars: &HashMap<&'static str, Expr>) -> String {
     let result = match eq {
-        Expr::Some(Op::Plus, a, b) => "(".to_string() + &prt(&*a.borrow(), vars) + "+" + &prt(&*b.borrow(), vars) + ")",
-        Expr::Some(Op::Minus, a, b) => "(".to_string() + &prt(&*a.borrow(), vars) + "-" + &prt(&*b.borrow(), vars) + ")",
-        Expr::Some(Op::Times, a, b) => "(".to_string() + &prt(&*a.borrow(), vars) + "*" + &prt(&*b.borrow(), vars) + ")",
-        Expr::Some(Op::Divide, a, b) => "(".to_string() + &prt(&*a.borrow(), vars) + "/" +  &prt(&*b.borrow(), vars) + ")",
-        Expr::Some(Op::Equals, a, b) => "(".to_string() + &prt(&*a.borrow(), vars) + "=" +  &prt(&*b.borrow(), vars) + ")",
+        Expr::Some(Op::Plus, a, b) => "(".to_string() + &prt(&*a.clone(), vars) + "+" + &prt(&*b.clone(), vars) + ")",
+        Expr::Some(Op::Minus, a, b) => "(".to_string() + &prt(&*a.clone(), vars) + "-" + &prt(&*b.clone(), vars) + ")",
+        Expr::Some(Op::Times, a, b) => "(".to_string() + &prt(&*a.clone(), vars) + "*" + &prt(&*b.clone(), vars) + ")",
+        Expr::Some(Op::Divide, a, b) => "(".to_string() + &prt(&*a.clone(), vars) + "/" +  &prt(&*b.clone(), vars) + ")",
+        Expr::Some(Op::Equals, a, b) => "(".to_string() + &prt(&*a.clone(), vars) + "=" +  &prt(&*b.clone(), vars) + ")",
 
         Expr::Variable(x) => prt(&vars[*x], vars),
         Expr::Literal(x) => format!("{}", x),
