@@ -46,7 +46,20 @@ fn day23_part2(input: &'static str) -> usize {
 
 //------------------------------ SAMPLE DATA
 
-const _SAMPLE: &str = "1234";
+const _SAMPLE: &str = "        ...#
+.#..
+#...
+....
+...#.......#
+........#...
+..#....#....
+..........#.
+...#....
+.....#..
+.#......
+......#.
+
+10R5L5R10L4R5L5";
 
 const _ANS1: usize = 1;
 const _ANS2: usize = 2;
