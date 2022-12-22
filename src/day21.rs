@@ -8,6 +8,67 @@ use std::cell::RefCell;
 
 
 //------------------------------ PARSE INPUT
+// Nom reference: https://github.com/Geal/nom/blob/main/doc/choosing_a_combinator.md
+use nom::{
+    IResult, //error::Error,
+    bytes::complete::{tag},
+    character::complete::{alpha1, multispace0, digit1, one_of},
+    branch::alt,
+};
+
+// Parse monkey name and eat the colon
+// "sllz: 4" => (" 4", "sllz")
+fn parse_monkey_name(input: &'static str) -> IResult<&'static str, &'static str> {
+    let (i, name) = alpha1(input)?;
+    let (i, _) = tag(":")(i)?;
+    Ok((i, name))
+}
+
+// Parse a number as an expression
+// "123" -> Expr::Literal(123)
+fn parse_expr_literal(input: &'static str) -> IResult<&'static str, Expr> {
+    let (i, _) = multispace0(input)?;
+    let (i, arg1) = digit1(i)?;
+    Ok((i, Expr::Literal(arg1.parse().unwrap())))
+}
+
+// Parse a variable as an expression
+// "abcd" -> Expr::Variable("abcd")
+fn parse_expr_variable(input: &'static str) -> IResult<&'static str, Expr> {
+    let (i, _) = multispace0(input)?;
+    let (i, arg1) = alpha1(i)?;
+    Ok((i, Expr::Variable(arg1)))
+}
+
+// Parse an operator
+// "+" -> Op::Plus
+fn parse_expr_operator(input: &'static str) -> IResult<&'static str, Op> {
+    let (i, _) = multispace0(input)?;
+    let (i, op) = one_of("+-*/")(i)?;
+    let op = match op {
+        '+' => Op::Plus,
+        '-' => Op::Minus,
+        '*' => Op::Times,
+        '/' => Op::Divide,
+        _ => panic!("How to error?"),
+    };
+    Ok((i, op))
+}
+
+// Parse a binary expression
+// "abcd / xyzz" -> Expr::Some(Op::Divide, Expr::Variable("abcd"), Expr::Variable("xyzz"))
+fn parse_expr_binary(input: &'static str) -> IResult<&'static str, Expr> {
+    let (i, arg1) = parse_expr_variable(input)?;
+    let (i, op) = parse_expr_operator(i)?;
+    let (i, arg2) = parse_expr_variable(i)?;
+    Ok((i, Expr::Some(op, Rc::new(RefCell::new(arg1)), Rc::new(RefCell::new(arg2)))))
+}
+
+// Parse any kind of expression
+fn parse_expr(input: &'static str) -> IResult<&'static str, Expr> {
+    alt((parse_expr_binary, parse_expr_literal))(input)
+}
+
 
 #[derive(Clone, Copy, Debug)]
 enum Op {
@@ -27,29 +88,11 @@ enum Expr {
 
 fn parse(input: &'static str) -> HashMap<&'static str, Expr> {
     input.lines()
-        .map(|x| x.split(" ").collect())
-        .map(|l:Vec<&'static str>| {
-        let monk = &l[0][..4];
-
-        let eq = if l.len() == 2 {
-            Expr::Literal(l[1].parse::<i64>().unwrap())
-        } else {
-            if l.len() == 4 {
-                let a = Expr::Variable(l[1]);
-                let b = Expr::Variable(l[3]);
-                match l[2] {
-                    "+" => Expr::Some(Op::Plus,Rc::new(RefCell::new(a)),Rc::new(RefCell::new(b))),
-                    "-" => Expr::Some(Op::Minus,Rc::new(RefCell::new(a)),Rc::new(RefCell::new(b))),
-                    "*" => Expr::Some(Op::Times,Rc::new(RefCell::new(a)),Rc::new(RefCell::new(b))),
-                    "/" => Expr::Some(Op::Divide,Rc::new(RefCell::new(a)),Rc::new(RefCell::new(b))),
-                    _ => unimplemented!(),
-                }
-            } else {
-                unreachable!();
-            }
-        };
-        (monk, eq)
-    }).collect()
+        .map(|i| {
+            let (i, name) = parse_monkey_name(i).unwrap();
+            let (_, expr) = parse_expr(i).unwrap();
+            (name, expr)
+        }).collect()
 }
 
 //------------------------------ SOLVE
