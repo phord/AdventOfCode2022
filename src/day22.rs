@@ -3,6 +3,7 @@ use yaah::aoc;
 #[allow(unused)]
 use crate::*;
 use std::collections::HashMap;
+use colored::*;
 
 //------------------------------ PARSE INPUT
 
@@ -159,19 +160,19 @@ fn next2(map: &Grid, pos: Point, dir: &Direction) -> Option<(Point, Direction)> 
             Direction::Up => {
                 if cface == 0 {
                     // 5->3
-                    // println!("  5->3");
+                    println!("  5->3");
                     row = width + col;
                     col = width;
                     dir = &Direction::Right;
                 } else if cface == 1 {
                     // 2->6
-                    // println!("  2->6");
+                    println!("  2->6");
                     row = width * 3 + col % width;
                     col = 0;
                     dir = &Direction::Right;
                 } else if cface == 2 {
                     // 1->6
-                    // println!("  1->6");
+                    println!("  1->6");
                     col = width - col % width - 1;
                     row = width * 4 - 1;
                     dir = &Direction::Up;
@@ -182,19 +183,19 @@ fn next2(map: &Grid, pos: Point, dir: &Direction) -> Option<(Point, Direction)> 
             Direction::Down => {
                 if cface == 0 {
                     // 6->1
-                    // println!("  6->1");
+                    println!("  6->1");
                     col = width * 3 - col % width - 1;
                     row = 0;
                     dir = &Direction::Down;
                 } else if cface == 1 {
                     // 4->6
-                    // println!("  4->6");
-                    col = width - 1;
+                    println!("  4->6   {}, {}", row, col);
                     row = width * 3 + col % width;
+                    col = width - 1;
                     dir = &Direction::Left;
                 } else if cface == 2 {
                     // 1->3
-                    // println!("  1->3");
+                    println!("  1->3");
                     row = width + col % width;
                     col = width * 2 - 1;
                     dir = &Direction::Left;
@@ -205,25 +206,25 @@ fn next2(map: &Grid, pos: Point, dir: &Direction) -> Option<(Point, Direction)> 
             Direction::Right => {
                 if rface == 0 {
                     // 1->4
-                    // println!("  1->4");
+                    println!("  1->4");
                     row = width * 3 - row % width - 1;
                     col = width * 2 - 1;
                     dir = &Direction::Left;
                 } else if rface == 1 {
                     // 3->1
-                    // println!("  3->1");
+                    println!("  3->1");
                     col = width * 2 + row % width;
                     row = width - 1;
                     dir = &Direction::Up;
                 } else if rface == 2 {
                     // 4->1
-                    // println!("  4->1");
+                    println!("  4->1");
                     col = width *3 - 1;
                     row = width - row % width - 1;
                     dir = &Direction::Left;
                 } else if rface == 3 {
                     // 6->4
-                    // println!("  6->4");
+                    println!("  6->4");
                     col = width + row % width;
                     row = width * 3 - 1;
                     dir = &Direction::Up;
@@ -234,25 +235,25 @@ fn next2(map: &Grid, pos: Point, dir: &Direction) -> Option<(Point, Direction)> 
             Direction::Left => {
                 if rface == 0 {
                     // 2->5
-                    // println!("  2->5");
+                    println!("  2->5");
                     col = 0;
                     row = width * 3 - row % width - 1;
                     dir = &Direction::Right;
                 } else if rface == 1 {
                     // 3->5
-                    // println!("  3->5");
+                    println!("  3->5");
                     col = row % width;
                     row = width * 2;
                     dir = &Direction::Up;
                 } else if rface == 2 {
                     // 5->2
-                    // println!("  5->2");
+                    println!("  5->2");
                     col = width;
                     row = width - row % width;
                     dir = &Direction::Right;
                 } else if rface == 3 {
                     // 6->2
-                    // println!("  6->2");
+                    println!("  6->2");
                     col = width + row % width;
                     row = 0;
                     dir = &Direction::Up;
@@ -339,11 +340,16 @@ fn solve2(input: &'static str) -> i32 {
     let mut pos = (0, col);
     let mut dir = Direction::Right;
 
+    // display(&map, &pos, &dir);
+
     // println!("{:?} {:?}", pos, dir);
     for (dist, turn) in plan {
         for _ in 0..dist {
             match next2(&map, pos, &dir) {
-                Some((p, d)) => { pos = p; dir = d; },
+                Some((p, d)) => {
+                    pos = p; dir = d;
+                    display_cube_face(&map, &pos, &dir, get_face(&pos));
+                },
                 None => {},
             };
         }
@@ -371,6 +377,171 @@ fn score(dir: &Direction, pos: &Point) -> i32 {
     1004 + 1000 * pos.0 + 4 * pos.1 + numdir
 }
 
+fn display_small(map: &Grid, pos: &Point, dir: &Direction) {
+    let maxrow = map.iter().map(|((r,_),_)| *r).max().unwrap();
+    let minrow = map.iter().map(|((r,_),_)| *r).min().unwrap();
+    let maxcol = map.iter().map(|((_,c),_)| *c).max().unwrap();
+    let mincol = map.iter().map(|((_,c),_)| *c).min().unwrap();
+
+    println!();
+
+    let nearby = |p1: &Point, p2: &Point| -> bool { let (y1,x1) = p1; let (y2,x2) = p2; (y1-y2).abs() < 3 && (x1-x2).abs() < 3 };
+    for row in (minrow..=maxrow).filter(|x| x%5 == 0) {
+        for col in (mincol..=maxcol).filter(|x| x%5 == 0) {
+            let cur = (row, col);
+            if nearby(pos, &cur) {
+                match dir {
+                        Direction::Right => print!(">"),
+                        Direction::Down => print!("V"),
+                        Direction::Left => print!("<"),
+                        Direction::Up => print!("^"),
+                        Direction::Same => panic!(),
+                };
+            } else if map.iter().any(|(p,_)| nearby(p, &(row,col))) {
+                print!(".");
+            } else {
+                print!(" ");
+            }
+        }
+        println!();
+    }
+}
+
+fn display(map: &Grid, pos: &Point, dir: &Direction) {
+    let maxrow = map.iter().map(|((r,_),_)| *r).max().unwrap() - 3;
+    let minrow = map.iter().map(|((r,_),_)| *r).min().unwrap();
+    let maxcol = map.iter().map(|((_,c),_)| *c).max().unwrap();
+    let mincol = map.iter().map(|((_,c),_)| *c).min().unwrap();
+
+    println!();
+
+    for row in (minrow..=maxrow) {
+        for col in (mincol..=maxcol) {
+            let cur = (row, col);
+            if cur == *pos {
+                let car = match dir {
+                        Direction::Right => ">",
+                        Direction::Down => "V",
+                        Direction::Left => "<",
+                        Direction::Up => "^",
+                        Direction::Same => panic!(),
+                };
+                print!("{}", car.bright_yellow());
+            } else if map.contains_key(&cur) {
+                match map[&cur] {
+                    Cell::Floor => print!("{}", ".".green()),
+                    Cell::Wall => print!("{}", "#".red()),
+                }
+            } else {
+                print!(" ");
+            }
+            print!(" ");
+        }
+        if row == 0 {
+            print!("{}, {}", pos.0, pos.1);
+        }
+        println!();
+    }
+}
+
+fn get_face(pos: &Point) -> usize {
+    let width = 50;
+    let (mut row, mut col) = pos;
+    row /= width;
+    col /= width;
+
+    match (row, col) {
+         (0, 2) => 1,
+         (0, 1) => 2,
+         (1, 1) => 3,
+         (2, 1) => 4,
+         (2, 0) => 5,
+         (3, 0) => 6,
+        _ => panic!(),
+    }
+}
+
+fn get_cell(map: &Grid, pos: &Point, dir: &Direction, cur: &Point) -> ColoredString {
+    if *cur == *pos {
+        let car = match dir {
+                Direction::Right => ">",
+                Direction::Down => "V",
+                Direction::Left => "<",
+                Direction::Up => "^",
+                Direction::Same => panic!(),
+        };
+        car.bright_yellow()
+    } else if map.contains_key(&cur) {
+        match map[&cur] {
+            Cell::Floor => ".".green(),
+            Cell::Wall => "#".red(),
+        }
+    } else {
+        " ".black()
+    }
+
+}
+fn display_cube_face(map: &Grid, pos: &Point, dir: &Direction, face: usize) {
+    let maxrow = map.iter().map(|((r,_),_)| *r).max().unwrap() - 3;
+    let minrow = map.iter().map(|((r,_),_)| *r).min().unwrap();
+    let maxcol = map.iter().map(|((_,c),_)| *c).max().unwrap();
+    let mincol = map.iter().map(|((_,c),_)| *c).min().unwrap();
+
+    let width = 50;
+
+    let start = match face {
+        1 => (0, 2),
+        2 => (0, 1),
+        3 => (1, 1),
+        4 => (2, 1),
+        5 => (2, 0),
+        6 => (3, 0),
+        _ => panic!(),
+    };
+
+    let minrow = start.0 * width;
+    let mincol = start.1 * width;
+    let maxrow = minrow + width - 1;
+    let maxcol = mincol + width - 1;
+    println!();
+
+    let side:Vec<Vec<ColoredString>> = (minrow..=maxrow).map(|row|
+        (mincol..=maxcol).map(|col| {
+            let cur = (row, col);
+            get_cell(map, pos, dir, &cur)
+        }).collect::<Vec<_>>()
+    ).collect();
+
+    for row in (minrow..=maxrow) {
+        println!();
+        for _ in 0..row-minrow {
+            print!(" ");
+        }
+        for col in (mincol..=maxcol) {
+            let cur = (row, col);
+            let c = get_cell(map, pos, dir, &cur);
+            print!("{}{}", c, c);
+        }
+    }
+
+    println!();
+
+    for row in (minrow..=maxrow) {
+        for _ in 0..1 {
+            println!();
+            print!("                                                  ");
+            for col in (mincol..=maxcol) {
+                let cur = (row, col);
+                let c = get_cell(map, pos, dir, &cur);
+                print!("{}{}", c, c);
+            }
+        }
+        if row == 0 {
+            print!("{}, {}", pos.0, pos.1);
+        }
+    }
+}
+
 //------------------------------ RUNNERS
 
 #[allow(unused)]
@@ -386,6 +557,8 @@ fn day22_part1(input: &'static str) -> i32 {
 fn day22_part2(input: &'static str) -> i32 {
     let ans = solve2(input);
     // assert_eq!(ans, 0);
+    // 13280 is wrong (too low)
+    // 121335 is too low
     ans
 }
 
