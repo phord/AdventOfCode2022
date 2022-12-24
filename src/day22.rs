@@ -95,7 +95,8 @@ fn next(map: &Grid, pos: Point, dir: &Direction) -> Option<Point> {
     }
 }
 
-fn next2(map: &Grid, pos: Point, dir: &Direction) -> Option<(Point, Direction)> {
+// FIXME: Rename to something that indicates it advances pos in direction
+fn adjacent_face(map: &Grid, pos: Point, dir: &Direction) -> (Point, Direction) {
     let width = if map.len() > 200 { 50 } else { 4 };
 
     let (row, col) = pos;
@@ -160,19 +161,19 @@ fn next2(map: &Grid, pos: Point, dir: &Direction) -> Option<(Point, Direction)> 
             Direction::Up => {
                 if cface == 0 {
                     // 5->3
-                    println!("  5->3");
+                    // println!("  5->3");
                     row = width + col;
                     col = width;
                     dir = &Direction::Right;
                 } else if cface == 1 {
                     // 2->6
-                    println!("  2->6");
+                    // println!("  2->6");
                     row = width * 3 + col % width;
                     col = 0;
                     dir = &Direction::Right;
                 } else if cface == 2 {
                     // 1->6
-                    println!("  1->6");
+                    // println!("  1->6");
                     col = width - col % width - 1;
                     row = width * 4 - 1;
                     dir = &Direction::Up;
@@ -183,19 +184,19 @@ fn next2(map: &Grid, pos: Point, dir: &Direction) -> Option<(Point, Direction)> 
             Direction::Down => {
                 if cface == 0 {
                     // 6->1
-                    println!("  6->1");
+                    // println!("  6->1");
                     col = width * 3 - col % width - 1;
                     row = 0;
                     dir = &Direction::Down;
                 } else if cface == 1 {
                     // 4->6
-                    println!("  4->6   {}, {}", row, col);
+                    // println!("  4->6   {}, {}", row, col);
                     row = width * 3 + col % width;
                     col = width - 1;
                     dir = &Direction::Left;
                 } else if cface == 2 {
                     // 1->3
-                    println!("  1->3");
+                    // println!("  1->3");
                     row = width + col % width;
                     col = width * 2 - 1;
                     dir = &Direction::Left;
@@ -206,25 +207,25 @@ fn next2(map: &Grid, pos: Point, dir: &Direction) -> Option<(Point, Direction)> 
             Direction::Right => {
                 if rface == 0 {
                     // 1->4
-                    println!("  1->4");
+                    // println!("  1->4");
                     row = width * 3 - row % width - 1;
                     col = width * 2 - 1;
                     dir = &Direction::Left;
                 } else if rface == 1 {
                     // 3->1
-                    println!("  3->1");
+                    // println!("  3->1");
                     col = width * 2 + row % width;
                     row = width - 1;
                     dir = &Direction::Up;
                 } else if rface == 2 {
                     // 4->1
-                    println!("  4->1");
+                    // println!("  4->1");
                     col = width *3 - 1;
                     row = width - row % width - 1;
                     dir = &Direction::Left;
                 } else if rface == 3 {
                     // 6->4
-                    println!("  6->4");
+                    // println!("  6->4");
                     col = width + row % width;
                     row = width * 3 - 1;
                     dir = &Direction::Up;
@@ -235,25 +236,25 @@ fn next2(map: &Grid, pos: Point, dir: &Direction) -> Option<(Point, Direction)> 
             Direction::Left => {
                 if rface == 0 {
                     // 2->5
-                    println!("  2->5");
+                    // println!("  2->5");
                     col = 0;
                     row = width * 3 - row % width - 1;
                     dir = &Direction::Right;
                 } else if rface == 1 {
                     // 3->5
-                    println!("  3->5");
+                    // println!("  3->5");
                     col = row % width;
                     row = width * 2;
                     dir = &Direction::Up;
                 } else if rface == 2 {
                     // 5->2
-                    println!("  5->2");
+                    // println!("  5->2");
                     col = width;
                     row = width - row % width;
                     dir = &Direction::Right;
                 } else if rface == 3 {
                     // 6->2
-                    println!("  6->2");
+                    // println!("  6->2");
                     col = width + row % width;
                     row = 0;
                     dir = &Direction::Up;
@@ -271,8 +272,14 @@ fn next2(map: &Grid, pos: Point, dir: &Direction) -> Option<(Point, Direction)> 
         dbg!(dir);
         dbg!(next);
     }
+    (next, *dir)
+}
+
+fn next2(map: &Grid, pos: Point, dir: &Direction) -> Option<(Point, Direction)> {
+    let (next,dir) = adjacent_face(map, pos, dir);
+
     match map[&next] {
-        Cell::Floor => Some((next, *dir)),
+        Cell::Floor => Some((next, dir)),
         _ => None,
     }
 }
@@ -333,10 +340,28 @@ fn solve1(input: &'static str) -> i32 {
     score(&dir, &pos)
 }
 
+struct Game {
+    map: Grid,
+    maxrow: i32,
+    minrow: i32,
+    maxcol: i32,
+    mincol: i32,
+    width: i32,
+}
+
 fn solve2(input: &'static str) -> i32 {
     let (map, plan) = parse(input);
 
-    let col = map.iter().filter(|((r,_),cell)| *r == 0 && is_floor(cell)).map(|((_,c),_)| *c).min().unwrap();
+    let maxrow = map.iter().map(|((r,_),_)| *r).max().unwrap();
+    let minrow = map.iter().map(|((r,_),_)| *r).min().unwrap();
+    let maxcol = map.iter().map(|((_,c),_)| *c).max().unwrap();
+    let mincol = map.iter().map(|((_,c),_)| *c).min().unwrap();
+
+    let width = 50;
+
+    let game = Game { map, maxrow, minrow, maxcol, mincol, width };
+
+    let col = game.map.iter().filter(|((r,_),cell)| *r == 0 && is_floor(cell)).map(|((_,c),_)| *c).min().unwrap();
     let mut pos = (0, col);
     let mut dir = Direction::Right;
 
@@ -345,10 +370,10 @@ fn solve2(input: &'static str) -> i32 {
     // println!("{:?} {:?}", pos, dir);
     for (dist, turn) in plan {
         for _ in 0..dist {
-            match next2(&map, pos, &dir) {
+            match next2(&game.map, pos, &dir) {
                 Some((p, d)) => {
                     pos = p; dir = d;
-                    display_cube_face(&map, &pos, &dir, get_face(&pos));
+                    display_cube_face(&game, &pos, &dir);
                 },
                 None => {},
             };
@@ -444,23 +469,6 @@ fn display(map: &Grid, pos: &Point, dir: &Direction) {
     }
 }
 
-fn get_face(pos: &Point) -> usize {
-    let width = 50;
-    let (mut row, mut col) = pos;
-    row /= width;
-    col /= width;
-
-    match (row, col) {
-         (0, 2) => 1,
-         (0, 1) => 2,
-         (1, 1) => 3,
-         (2, 1) => 4,
-         (2, 0) => 5,
-         (3, 0) => 6,
-        _ => panic!(),
-    }
-}
-
 fn get_cell(map: &Grid, pos: &Point, dir: &Direction, cur: &Point) -> ColoredString {
     if *cur == *pos {
         let car = match dir {
@@ -481,59 +489,95 @@ fn get_cell(map: &Grid, pos: &Point, dir: &Direction, cur: &Point) -> ColoredStr
     }
 
 }
-fn display_cube_face(map: &Grid, pos: &Point, dir: &Direction, face: usize) {
-    let maxrow = map.iter().map(|((r,_),_)| *r).max().unwrap() - 3;
-    let minrow = map.iter().map(|((r,_),_)| *r).min().unwrap();
-    let maxcol = map.iter().map(|((_,c),_)| *c).max().unwrap();
-    let mincol = map.iter().map(|((_,c),_)| *c).min().unwrap();
 
-    let width = 50;
+use termion::{color, cursor, clear};
+use std::{thread, time};
 
-    let start = match face {
-        1 => (0, 2),
-        2 => (0, 1),
-        3 => (1, 1),
-        4 => (2, 1),
-        5 => (2, 0),
-        6 => (3, 0),
-        _ => panic!(),
+fn draw_face(game: &Game, pos: &Point, dir: &Direction) -> Vec<Vec<ColoredString>> {
+    let minrow = (pos.0 / game.width) * game.width;
+    let mincol = (pos.1 / game.width) * game.width;
+    let maxrow = minrow + game.width - 1;
+    let maxcol = mincol + game.width - 1;
+
+    let pos = match dir {
+        Direction::Same => &(0, 0),
+        _ => pos,
     };
 
-    let minrow = start.0 * width;
-    let mincol = start.1 * width;
-    let maxrow = minrow + width - 1;
-    let maxcol = mincol + width - 1;
-    println!();
-
-    let side:Vec<Vec<ColoredString>> = (minrow..=maxrow).map(|row|
+    (minrow..=maxrow).map(|row|
         (mincol..=maxcol).map(|col| {
             let cur = (row, col);
-            get_cell(map, pos, dir, &cur)
+            get_cell(&game.map, pos, dir, &cur)
         }).collect::<Vec<_>>()
-    ).collect();
+    ).collect()
+}
+
+fn display_cube_face(game: &Game, pos: &Point, dir: &Direction) {
+
+    println!("{}", cursor::Goto(1, 1)); //, clear::All);
+    thread::sleep(time::Duration::from_millis(50));
+
+    let minrow = (pos.0 / game.width) * game.width;
+    let mincol = (pos.1 / game.width) * game.width;
+    let maxrow = minrow + game.width - 1;
+    let maxcol = mincol + game.width - 1;
+    // println!("{} {} {} {}", minrow, mincol, maxrow, maxcol);
+    println!();
+
+    let front = draw_face(game, pos, dir);
+    // FIXME: Rotate front face to match expected orientation
+
+    // FIXME: Show recent path trail to indicate where we came from
+
+    // FIXME: Find correct direction to left face
+    let (left_pos, _) = adjacent_face(&game.map, (minrow, mincol), &Direction::Left);
+    let left = draw_face(game, &left_pos, &Direction::Same);
+
+    // FIXME: Find correct direction to top face
+    let (top_pos, _) = adjacent_face(&game.map, (minrow, mincol), &Direction::Up);
+    let top = draw_face(game, &top_pos, &Direction::Same);
 
     for row in (minrow..=maxrow) {
         println!();
-        for _ in 0..row-minrow {
-            print!(" ");
+        // First half of left face
+        for skew in 0..row-minrow {
+            let row = row-minrow;
+            // print!("{} {}  ", row, skew);
+            print!("{}", left[(row-skew) as usize][skew as usize]);
         }
+        // Edge
+        print!("{}", "\\\\".white());
+        // Top face
         for col in (mincol..=maxcol) {
-            let cur = (row, col);
-            let c = get_cell(map, pos, dir, &cur);
+            let c = &top[(row-minrow) as usize][(col-mincol) as usize];
             print!("{}{}", c, c);
         }
     }
 
-    println!();
-
-    for row in (minrow..=maxrow) {
+    for row in (minrow..=maxrow + 1) {
         for _ in 0..1 {
             println!();
-            print!("                                                  ");
-            for col in (mincol..=maxcol) {
-                let cur = (row, col);
-                let c = get_cell(map, pos, dir, &cur);
-                print!("{}{}", c, c);
+            // Second half of left face
+            for skew in 0..game.width {
+                let row = row-minrow;
+                let p = game.width + row - skew;
+                if p >= game.width {
+                    print!(" ");
+                } else {
+                    print!("{}", left[(p) as usize][(game.width - p + row) as usize]);
+                }
+            }
+            // Edge
+            print!("{}", "||".white());
+            if row == minrow {
+                // Edge
+                print!("{}", "====================================================================================================  ".white());
+            } else {
+                let row = row - 1;
+                for col in (mincol..=maxcol) {
+                    let c = &front[(row-minrow) as usize][(col-mincol) as usize];
+                    print!("{}{}", c, c);
+                }
             }
         }
         if row == 0 {
@@ -545,7 +589,7 @@ fn display_cube_face(map: &Grid, pos: &Point, dir: &Direction, face: usize) {
 //------------------------------ RUNNERS
 
 #[allow(unused)]
-#[aoc(day22, part1)]
+// #[aoc(day22, part1)]
 fn day22_part1(input: &'static str) -> i32 {
     let ans = solve1(input);
     // assert_eq!(ans, 0);

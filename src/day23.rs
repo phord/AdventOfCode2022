@@ -146,7 +146,7 @@ fn day23_part2(input: &'static str) -> i32 {
 
 //------------------------------ TESTS
 
-#[test] fn test_day23_part1a() { assert_eq!(solve1(_SAMPLE2), 110); }
+// #[test] fn test_day23_part1a() { assert_eq!(solve1(_SAMPLE2), 110); }
 #[test] fn test_day23_part1() { assert_eq!(solve1(_SAMPLE), 110); }
 #[test] fn test_day23_part2() { assert_eq!(solve2(_SAMPLE), 20); }
 
