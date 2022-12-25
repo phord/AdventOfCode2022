@@ -111,29 +111,11 @@ fn blizz_mov(height: i32, width: i32, round: i32, b: &Blizzard) -> Point {
 }
 
 static DIRS: [(i32, i32); 5] = [ (0,1), (1, 0), (0,-1), (-1, 0), (0,0), ];
-fn all_moves_orig(game: &Game, pos: &Point) -> Vec<Point> {
-    DIRS.iter()
-        .map(|d| mov(*pos, *d))
-             .filter(|p|
-            (p.0 > 0 && p.0 <= game.height && p.1 > 0 && p.1 <= game.width) ||
-            // (p.0 == 0 && p.1 == game.start) ||
-            (p.0 == game.height+1 && p.1 == game.finish) )
-        .collect()
-}
 fn all_moves(game: &Game, state: &State) -> Vec<State> {
-    println!("--- {:?} ---", (state.round, state.pos));
-    let blizz_pos = &game.blizz_pos[(state.round + 1) % game.lcm];
-    let points:Vec<_> = all_moves_orig(game, &state.pos).into_iter()
-            .filter(|p| !blizz_pos.contains(&p)).collect();
-
     let p3 = state.round % game.lcm;
     let pos = (p3 as i32, state.pos.0, state.pos.1);
     let round = state.round + 1;
-    let states:Vec<Point3> = game.edges[&pos].clone();
-    println!("states: {:?}", states.iter().map(|x| (x.1,x.2)).collect::<Vec<_>>());
-    println!("points: {:?}", points);
-    // game.edges[&pos].iter().map(|node| State { round, pos: (node.1, node.2)}).collect()
-    points.into_iter().map(|p| State {pos: p, round: state.round + 1}).collect()
+    game.edges[&pos].iter().map(|node| State { round, pos: (node.1, node.2)}).collect()
 }
 
 fn draw(game: &Game, state: &State) {
@@ -187,26 +169,34 @@ fn astar(game: &Game, state: State) -> usize {
     let mut fringe = collect_fringe (game, vec![state], &[]);
 
     let mut count = 0;
-    let beam = 1000000;
+    let batch = 100;
+    let beam = 100000;
+    let goal = (game.height+1, game.finish);
     loop {
-        let (_, state) = &fringe[0];
-        if count % 1 == 0 {
+        if count % 10000 == 0 {
+            let (_, state) = &fringe[0];
             println!("Round {}: qd={}", state.round, fringe.len()+1);
         }
-        count += 1;
-        if state.pos == (game.height+1, game.finish) {
-            return state.round;
+        count += batch;
+
+        for (_, state) in fringe.iter().take(batch) {
+            if state.pos == goal {
+                return state.round;
+            }
         }
-        let next_paths:Vec<State> = fringe.iter().take(beam)
+
+        let next_paths:Vec<State> = fringe.iter().take(batch)
             .flat_map(|(_, state)| astar_heuristic(game, &state)).collect();
-        fringe = collect_fringe(game, next_paths, &vec![]);
+        let min = batch.min(fringe.len());
+        let max = (min+beam).min(fringe.len());
+        fringe = collect_fringe(game, next_paths, &fringe[min..max]);
     }
 }
 
 // DFS
 fn dfs(game: &Game, state: State, visited: &mut Path, memo: &mut Memo, best: &mut usize) -> Option<usize> {
 
-    if state.round == 0 {
+    if state.round % game.lcm == 0 {
         println!("{:?} {}", state.pos, visited.len());
     }
     if state.pos == (game.height+1, game.finish) {
@@ -219,6 +209,7 @@ fn dfs(game: &Game, state: State, visited: &mut Path, memo: &mut Memo, best: &mu
         //         draw(game, s);
         //     }
         // }
+        *best = visited.len();
         Some(visited.len())
     } else if *best > 0 && *best < visited.len() {
         // Some other path did better already
@@ -241,7 +232,6 @@ fn dfs(game: &Game, state: State, visited: &mut Path, memo: &mut Memo, best: &mu
             } else {
                 // We lived!  Try to move and continue on our quest tomorrow.
                 visited.insert(state.clone());
-                let round = (state.round + 1) % game.lcm;
                 let result = all_moves(game, &state)
                     .into_iter()
                     .map(|state| dfs(game, state, visited, memo, best))
@@ -249,7 +239,6 @@ fn dfs(game: &Game, state: State, visited: &mut Path, memo: &mut Memo, best: &mu
                     .min();
                 visited.remove(&state);
                 memo.insert(state, result);
-                if let Some(val) = &result { if *val < *best { *best = *val; }}
                 result
             }
         }
@@ -273,12 +262,12 @@ fn solve(input: &'static str, part: usize) -> usize {
         round: 0,
     };
 
-    // let mut memo: Memo = FnvHashMap::default();
-    // let mut path: Path = FnvHashSet::default();
-    // let mut best = 0;
-    // let ans = dfs(&game, start, &mut path, &mut memo, &mut best);
+    let mut memo: Memo = FnvHashMap::default();
+    let mut path: Path = FnvHashSet::default();
+    let mut best = 0;
+    let ans = dfs(&game, start, &mut path, &mut memo, &mut best).unwrap();
 
-    let ans = astar(&game, start);
+    // let ans = astar(&game, start);
     ans
 }
 
