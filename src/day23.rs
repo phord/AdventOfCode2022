@@ -28,6 +28,7 @@ fn adj( map: &HashSet<Point>, pos: &Point, targets: &Vec<Point>) -> bool {
         map.contains(&p)})
 }
 
+#[allow(unused)]
 fn print(map: &HashSet<Point>) {
     let maxrow = map.iter().map(|(r,_)| *r).max().unwrap();
     let minrow = map.iter().map(|(r,_)| *r).min().unwrap();
@@ -46,7 +47,7 @@ fn print(map: &HashSet<Point>) {
         println!();
     }
 }
-fn solve(input: &'static str, part: usize) -> (i32, i32) {
+fn solve(input: &'static str) -> (i32, i32) {
     let neighbors = vec![
         (-1,-1), (-1, 0), (-1, 1),
         (0,-1),          (0, 1),
@@ -83,7 +84,6 @@ fn solve(input: &'static str, part: usize) -> (i32, i32) {
                         .collect::<Vec<(Point, Point)>>();
                 if foo.is_empty() { //println!("{:?} has no place to go", pos);
                                     None } else {
-                    let (pos, d) = foo[0]; //println!("{:?} decides to move {:?}", pos, d);
                     Some(foo[0])}
                         })
                         .flatten()
@@ -123,8 +123,8 @@ fn solve(input: &'static str, part: usize) -> (i32, i32) {
 
 }
 
-fn solve1(input: &'static str) -> i32 { solve(input, 1).0 }
-fn solve2(input: &'static str) -> i32 { solve(input, 2).1 }
+fn solve1(input: &'static str) -> i32 { solve(input).0 }
+fn solve2(input: &'static str) -> i32 { solve(input).1 }
 
 //------------------------------ RUNNERS
 
