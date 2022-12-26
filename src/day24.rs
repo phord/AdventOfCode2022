@@ -19,6 +19,7 @@ struct Game {
     width: i32,
     height: i32,
     lcm: usize,
+    goal: Point,
     nodes:FnvHashSet<Point3>,
     edges:FnvHashMap<Point3, Vec<Point3>>,
     blizz_pos:Vec<FnvHashSet<Point>>,
@@ -76,23 +77,22 @@ fn parse(input: &'static str) -> Game {
 
     // A set of edges between every possible position (1.4m edges)
     let edges:FnvHashMap<Point3, Vec<Point3>> = nodes.iter()
-        .filter(|src| src.1 <= height)  // Remove finish cell as a source node
         .map(|src| (*src, {
             let (r, y, x) = src;
             let round = (r+1) % lcm as i32;
             DIRS.iter().map(move |d| (round, y + d.0, x + d.1))
-            .filter(|dest| (*y == 0 || dest.1 > 0) && nodes.contains(&dest))
+            .filter(|dest| nodes.contains(&dest))
             .collect()
         }))
         .collect();
 
     println!("Edges: {}", edges.len());
 
-    Game {start, finish, height, width, lcm, nodes, edges, blizz_pos}
+    Game {start, finish, height, width, lcm, goal: (height+1, finish), nodes, edges, blizz_pos}
 }
 
 //------------------------------ SOLVE
-#[derive(Eq, Hash, PartialEq, PartialOrd, Clone)]
+#[derive(Eq, Hash, PartialEq, PartialOrd, Clone, Debug)]
 struct State {
     round: usize,
     pos: Point,
@@ -115,6 +115,9 @@ fn all_moves(game: &Game, state: &State) -> Vec<State> {
     let p3 = state.round % game.lcm;
     let pos = (p3 as i32, state.pos.0, state.pos.1);
     let round = state.round + 1;
+    if !game.edges.contains_key(&pos) {
+        panic!("Missing cell at {:?}", pos);
+    }
     game.edges[&pos].iter().map(|node| State { round, pos: (node.1, node.2)}).collect()
 }
 
@@ -141,7 +144,7 @@ fn manhattan(a: &Point, b: &Point) -> usize {
 
 
 fn astar_score(game: &Game, state: &State) -> usize {
-    manhattan(&state.pos, &(game.height+1, game.finish))
+    manhattan(&state.pos, &game.goal)
 }
 
 fn astar_heuristic(game: &Game, state: &State) -> Vec<State> {
@@ -171,7 +174,7 @@ fn astar(game: &Game, state: State) -> usize {
     let mut count = 0;
     let batch = 100;
     let beam = 100000;
-    let goal = (game.height+1, game.finish);
+    let goal = &game.goal;
     loop {
         if count % 10000 == 0 {
             let (_, state) = &fringe[0];
@@ -180,7 +183,7 @@ fn astar(game: &Game, state: State) -> usize {
         count += batch;
 
         for (_, state) in fringe.iter().take(batch) {
-            if state.pos == goal {
+            if state.pos == *goal {
                 return state.round;
             }
         }
@@ -199,7 +202,10 @@ fn dfs(game: &Game, state: State, visited: &mut Path, memo: &mut Memo, best: &mu
     if state.round % game.lcm == 0 {
         println!("{:?} {}", state.pos, visited.len());
     }
-    if state.pos == (game.height+1, game.finish) {
+    if *best > 0 && *best < visited.len() {
+        // Some other path did better already
+        None
+    } else if state.pos == game.goal {
         // println!("Round {}: {:?}", state.round, &visited.iter().map(|x| x.pos).collect::<Vec<Point>>());
         // if visited.len() == 18 {
         //     let mut path = visited.iter().collect::<Vec<_>>();
@@ -209,15 +215,14 @@ fn dfs(game: &Game, state: State, visited: &mut Path, memo: &mut Memo, best: &mu
         //         draw(game, s);
         //     }
         // }
+        // println!("{:?}", &visited);
         *best = visited.len();
         Some(visited.len())
-    } else if *best > 0 && *best < visited.len() {
-        // Some other path did better already
-        None
     } else {
         // Premature optimization is the root of all ... something.
         if memo.contains_key(&state) {
             // We saw this movie before
+            // println!("MEMO: {:?} {:?}", state, memo[&state]);
             memo[&state]
         } else if visited.contains(&state) {
             // We're walking in circles.  Die.
@@ -231,6 +236,7 @@ fn dfs(game: &Game, state: State, visited: &mut Path, memo: &mut Memo, best: &mu
                 None // We died.
             } else {
                 // We lived!  Try to move and continue on our quest tomorrow.
+                let state = State { round: state.round % game.lcm, pos: state.pos };
                 visited.insert(state.clone());
                 let result = all_moves(game, &state)
                     .into_iter()
@@ -245,6 +251,28 @@ fn dfs(game: &Game, state: State, visited: &mut Path, memo: &mut Memo, best: &mu
     }
 }
 
+fn bfs(game: &Game, state: State) -> usize {
+    let mut pos = vec![state];
+
+    let mut count = 0;
+    let goal = &game.goal;
+    loop {
+        if count % 1 == 0 {
+            println!("Round {}: qd={}", count, pos.len());
+        }
+
+        if pos.iter().any(|state| state.pos == *goal ) {
+            return count;
+        }
+
+        count += 1;
+        pos = pos.iter()
+            .flat_map(|state| all_moves(game, &state)).collect();
+        pos.dedup();
+    }
+}
+
+
 
 fn solve(input: &'static str, part: usize) -> usize {
 
@@ -253,22 +281,35 @@ fn solve(input: &'static str, part: usize) -> usize {
     //   Track the round number, mod it with the lcm and save it with our current position.
     //   If we ever reach that spot again, we can prune it as a cycle.
 
-    let game = parse(input);
-    dbg!(game.lcm);
-    dbg!(game.width);
-    dbg!(game.height);
+    let mut game = parse(input);
+
+    let start_pos = (0, game.start);
+    let finish = game.goal;
+
+    // dbg!(game.lcm);
+    // dbg!(game.width);
+    // dbg!(game.height);
     let start = State {
-        pos: (0, game.start),
+        pos: start_pos,
         round: 0,
     };
 
-    let mut memo: Memo = FnvHashMap::default();
-    let mut path: Path = FnvHashSet::default();
-    let mut best = 0;
-    let ans = dfs(&game, start, &mut path, &mut memo, &mut best).unwrap();
+    let trav1 = bfs(&game, start);
+    dbg!(trav1);
 
-    // let ans = astar(&game, start);
-    ans
+    let start = State { pos: finish, round: trav1 % game.lcm, };
+    game.goal = start_pos;
+
+    let trav2 = bfs(&game, start);
+    dbg!(trav2);
+
+    let start = State { pos: start_pos, round: (trav1+trav2) % game.lcm, };
+    game.goal = finish;
+    let trav3 = bfs(&game, start);
+    dbg!(trav3);
+
+    if part == 1 {trav1}
+    else {trav1 + trav2 + trav3}
 }
 
 fn solve1(input: &'static str) -> usize { solve(input, 1) }
@@ -280,13 +321,12 @@ fn solve2(input: &'static str) -> usize { solve(input, 2) }
 #[aoc(day24, part1)]
 fn day24_part1(input: &'static str) -> usize {
     let ans = solve1(input);
-    // assert_eq!(ans, 0);
+    assert_eq!(ans, 297);
     ans
 }
 
 #[allow(unused)]
-// Uncomment next line when solution is ready
-// #[aoc(day24, part2)]
+#[aoc(day24, part2)]
 fn day24_part2(input: &'static str) -> usize {
     let ans = solve2(input);
     // assert_eq!(ans, 0);
@@ -315,4 +355,4 @@ const _SAMPLE: &str = "#.######
 // #####.#";
 
 const _ANS1: usize = 18;
-const _ANS2: usize = 2;
+const _ANS2: usize = 54;
