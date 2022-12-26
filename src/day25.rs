@@ -1,52 +1,60 @@
 #[allow(unused)]
 use yaah::aoc;
-#[allow(unused)]
-use crate::*;
 
-//------------------------------ PARSE INPUT
-
-fn parse(input: &'static str) -> Vec<u64> {
-    split_to_ints(input)
+fn snafu(s: &'static str) -> usize {
+    s.as_bytes().iter()
+        .rev()
+        .enumerate()
+        .map(|(pos, ch)| num::pow(5, pos) * match ch {
+            b'-' => -1,
+            b'=' => -2,
+            _ => (ch - b'0') as i64,
+        }).sum::<i64>() as usize
 }
 
-//------------------------------ SOLVE
-
-fn solve(input: &'static str, part: usize) -> usize {
-    parse(input);
-    part
+fn to_snafu(x: usize) -> String {
+    let mut s: String = "".to_string();
+    let mut x = x;
+    while x > 0 {
+        s.push("012=-".chars().skip(x % 5).next().unwrap());
+        x = (x+2) / 5;
+    }
+    let s = s.chars().rev().collect();
+    s
 }
 
-fn solve1(input: &'static str) -> usize { solve(input, 1) }
-fn solve2(input: &'static str) -> usize { solve(input, 2) }
-
-//------------------------------ RUNNERS
+fn parse(input: &'static str) -> Vec<usize> {
+    input.lines().map(|x| snafu(x)).collect()
+}
 
 #[allow(unused)]
-// Uncomment next line when solution is ready
-// #[aoc(day25, part1)]
-fn day25_part1(input: &'static str) -> usize {
-    let ans = solve1(input);
-    // assert_eq!(ans, 0);
+#[aoc(day25, part1)]
+fn day25_part1(input: &'static str) -> String {
+    let ans = to_snafu(parse(input).iter().sum());
+    assert_eq!(ans, "2=000=22-0-102=-1001");
     ans
 }
 
-#[allow(unused)]
-// Uncomment next line when solution is ready
-// #[aoc(day25, part2)]
-fn day25_part2(input: &'static str) -> usize {
-    let ans = solve2(input);
-    // assert_eq!(ans, 0);
-    ans
+#[test] fn test_day25_snafu() {
+    let dec = vec![ 1747, 906, 198, 11, 201, 31, 1257, 32, 353, 107, 7, 3, 37, ];
+    assert_eq!(parse(_SAMPLE), dec);
+
+    let mut it = _SAMPLE.lines();
+    for x in dec {
+        assert_eq!(to_snafu(x), it.next().unwrap());
+    }
 }
 
-//------------------------------ TESTS
-
-#[test] fn test_day25_part1() { assert_eq!(solve1(_SAMPLE), _ANS1); }
-#[test] fn test_day25_part2() { assert_eq!(solve2(_SAMPLE), _ANS2); }
-
-//------------------------------ SAMPLE DATA
-
-const _SAMPLE: &str = "1234";
-
-const _ANS1: usize = 1;
-const _ANS2: usize = 2;
+const _SAMPLE: &str = "1=-0-2
+12111
+2=0=
+21
+2=01
+111
+20012
+112
+1=-1=
+1-12
+12
+1=
+122";

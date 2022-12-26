@@ -13,7 +13,6 @@ use num::Integer;
 type Point = (i32, i32);
 struct Game {
     start: Point,
-    finish: Point,
     width: i32,
     height: i32,
     lcm: usize,
@@ -28,11 +27,10 @@ impl Game {
 
         let mut game = Game {
             start: (0, start),
-            finish: (height+1, finish),
+            goal: (height+1, finish),
             height,
             width,
             lcm: height.lcm(&width) as usize,
-            goal: (height+1, finish),
             nodes: FnvHashSet::default(),
             edges: FnvHashMap::default(),
             blizz_pos};
@@ -129,7 +127,7 @@ fn draw(game: &Game, state: &State) {
             let p = (row, col);
             print!("{}",
                 if p == state.pos {"E"}
-                else if (row == 0 || row == game.height+1) && p != game.start && p != game.finish {"#"}
+                else if (row == 0 || row == game.height+1) && p != game.start && p != game.goal {"#"}
                 else if blizz_pos.contains(&p) {"X"}
                 else {"."});
         }
