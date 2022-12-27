@@ -274,24 +274,16 @@ type Adjacency = FnvHashMap<usize, FnvHashMap<Direction, (usize, i32)>>;
 
 fn get_adjacency() -> Adjacency {
     const ADJACENT:[[(usize, i32); 4]; 6] = [
-        [ (6, 0), (2, 0), (  4, 180), ( 3, -90)],
-        [ (6, -90),  (5,  180),  (1, 0),  (3, 0)],
-        [ (2, 0),   (5,  90 ),  (1, 90),  (4, 0)],
-        [ (3, 0),   (5,  0  ),  (1, 180),  (6, -90)],
-        [ (3, -90), (2,  180),  (4, 0),  (6, 0)],
-        [ (5, 0),   (2,  90 ),  (4, 90),  (1, 0)],
-        ];
+    //     Up        Left        Right        Down    Face
+        [ (6,   0), (2,    0),  (4, 180), (3, -90)],  // 1
+        [ (6, -90), (5,  180),  (1,   0), (3,   0)],  // 2
+        [ (2,   0), (5,   90),  (1,  90), (4,   0)],  // 3
+        [ (3,   0), (5,    0),  (1, 180), (6, -90)],  // 4
+        [ (3, -90), (2,  180),  (4,   0), (6,   0)],  // 5
+        [ (5,   0), (2,   90),  (4,  90), (1,   0)],  // 6
+    ];
 
     let mut amap: Adjacency = FnvHashMap::default();
-
-    //     Up        Left        Right        Down
-    //  1  6 0       2 0         4 180        3 -90
-    //  2  6 -90     5 180       1 0          3 0
-    //  3  2 0       5 90        1 90         4 0
-    //  4  3 0       5 0         1 180        6 -90
-    //  5  3 -90     2 180       4 0          6 0
-    //  6  5 0       2 90        4 90         1 0
-    //
 
     for (f, map) in ADJACENT.iter().enumerate() {
         let f = f + 1; // 1-based face numbers
@@ -311,6 +303,7 @@ fn get_adjacency() -> Adjacency {
     amap
 }
 
+type History = (usize, Point, Direction);
 fn solve2(input: &'static str) -> i32 {
     let (map, plan) = parse(input);
 
@@ -326,12 +319,18 @@ fn solve2(input: &'static str) -> i32 {
 
     let mut face = map_to_face(&game, &(0, col)).unwrap();
 
+    let mut history: Vec<History> = Vec::new();
+    let max_history = 20;
     for (dist, turn) in plan {
         for _ in 0..dist {
             match next2(&game, face, pos, &dir) {
                 Some((f, p, d)) => {
                     face = f; pos = p; dir = d;
-                    // display_cube_face(&game, &face, &pos, &dir);
+                    history.push((face, pos, dir));
+                    if history.len() == max_history {
+                        history = history[1..].to_vec();
+                    }
+                    display_cube_face(&game, &history);
                 },
                 None => {},
             };
@@ -359,18 +358,16 @@ fn score(dir: &Direction, pos: &Point) -> i32 {
     1004 + 1000 * pos.0 + 4 * pos.1 + numdir
 }
 
-fn get_cell(map: &Grid, car: Option<(&Point, &Direction)>, cur: &Point) -> ColoredString {
-    if let Some((pos, dir)) = car {
-        if *cur == *pos {
-            let car = match dir {
-                    Direction::Right => ">",
-                    Direction::Down => "V",
-                    Direction::Left => "<",
-                    Direction::Up => "^",
-                    Direction::Same => panic!(),
-            };
-            return car.bright_yellow();
-        }
+fn get_cell(map: &Grid, car: &Vec<&History>, cur: &Point) -> ColoredString {
+    if let Some((_, _, dir)) = car.iter().find(|(_, pos, _)| *cur == *pos) {
+        let car = match dir {
+                Direction::Right => ">",
+                Direction::Down => "V",
+                Direction::Left => "<",
+                Direction::Up => "^",
+                Direction::Same => panic!(),
+        };
+        return car.bright_yellow();
     }
     if map.contains_key(&cur) {
         match map[&cur] {
@@ -383,24 +380,21 @@ fn get_cell(map: &Grid, car: Option<(&Point, &Direction)>, cur: &Point) -> Color
 
 }
 
-fn draw_face(game: &Game, face: &usize, car: Option<(&Point, &Direction)>) -> Vec<Vec<ColoredString>> {
-    let minrow = 0;
-    let mincol = 0;
-    let maxrow = game.width - 1;
-    let maxcol = game.width - 1;
-
+fn draw_face(game: &Game, face: &usize, history: &Vec<History>) -> Vec<Vec<ColoredString>> {
+    let history = history.iter().filter(|(f, _, _)| f == face).collect::<Vec<&History>>();
     let map = &game.faces[face-1];
-    (minrow..=maxrow).map(|row|
-        (mincol..=maxcol).map(|col| {
+    (0..game.width).map(|row|
+        (0..game.width).map(|col| {
             let cur = (row, col);
-            get_cell(map, car, &cur)
+            get_cell(map, &history, &cur)
         }).collect::<Vec<_>>()
     ).collect()
 }
 
 #[allow(unused)]
-fn display_cube_face(game: &Game, face: &usize, pos: &Point, dir: &Direction) {
+fn display_cube_face(game: &Game, history: &Vec<History>) {
 
+    let (face, pos, dir) = history.last().unwrap();
     println!("{}", cursor::Goto(1, 1)); //, clear::All);
     thread::sleep(time::Duration::from_millis(30));
 
@@ -409,18 +403,16 @@ fn display_cube_face(game: &Game, face: &usize, pos: &Point, dir: &Direction) {
     let (r,c) = pos;
     let pos = &(r % game.width, c % game.width);
 
-    let front = draw_face(game, face, Some((pos, dir)));
+    let front = draw_face(game, &face, history);
     // FIXME: Rotate front face to match expected orientation
 
-    // FIXME: Show recent path trail to indicate where we came from
+    // FIXME: Find correct orientation of left face
+    let left_face = game.adj[&face][&Direction::Left];
+    let left = draw_face(game, &left_face.0, history);
 
-    // FIXME: Find correct direction to left face
-    let left_face = game.adj[face][&Direction::Left];
-    let left = draw_face(game, &left_face.0, None);
-
-    // FIXME: Find correct direction to top face
-    let top_face = game.adj[face][&Direction::Up];
-    let top = draw_face(game, &top_face.0, None);
+    // FIXME: Find correct orientation of top face
+    let top_face = game.adj[&face][&Direction::Up];
+    let top = draw_face(game, &top_face.0, history);
 
     for row in 0..game.width {
         println!();
