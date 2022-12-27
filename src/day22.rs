@@ -149,9 +149,9 @@ fn move_car(game: &Game, face: usize, pos: &Point, dir: &Direction) -> (usize, P
         let max_pos = game.width - 1;
         match rotation {
             0   => {},
-            90  => { let tmp = row; row = col; col = max_pos - tmp; }             // 2,20 => 20,48
-            180 => { let tmp = row; row = max_pos - col; col = max_pos - tmp; }     // 2,20 => 48,30
-            -90 => { let tmp = row; row = max_pos - col; col = tmp; }     // 2,20 => 48,2
+            90  => { let tmp = row; row = max_pos - col; col = tmp; }             // 2,20 => 20,48
+            180 => { row = max_pos - row; col = max_pos - col; }                  // 2,20 => 48,30
+            -90 => { let tmp = row; row = col; col = max_pos - tmp; }             // 2,20 => 48,2
             _ => panic!("Bad rotation: {}", rotation),
         }
         match rotation {
@@ -254,7 +254,7 @@ fn adjacent_face(map: &Grid, pos: Point, dir: &Direction) -> (Point, Direction) 
                 } else if cface == 2 {
                     // 1->6
                     // println!("  1->6");
-                    col = width - col % width - 1;
+                    col = col % width;
                     row = width * 4 - 1;
                     dir = &Direction::Up;
                 } else {
@@ -265,7 +265,7 @@ fn adjacent_face(map: &Grid, pos: Point, dir: &Direction) -> (Point, Direction) 
                 if cface == 0 {
                     // 6->1
                     // println!("  6->1");
-                    col = width * 3 - col % width - 1;
+                    col = width * 2 + col % width;
                     row = 0;
                     dir = &Direction::Down;
                 } else if cface == 1 {
@@ -325,19 +325,19 @@ fn adjacent_face(map: &Grid, pos: Point, dir: &Direction) -> (Point, Direction) 
                     // println!("  3->5");
                     col = row % width;
                     row = width * 2;
-                    dir = &Direction::Up;
+                    dir = &Direction::Down;
                 } else if rface == 2 {
                     // 5->2
                     // println!("  5->2");
                     col = width;
-                    row = width - row % width;
+                    row = width - row % width - 1;
                     dir = &Direction::Right;
                 } else if rface == 3 {
                     // 6->2
                     // println!("  6->2");
                     col = width + row % width;
                     row = 0;
-                    dir = &Direction::Up;
+                    dir = &Direction::Down;
                 } else {
                     panic!();
                 }
@@ -355,6 +355,20 @@ fn adjacent_face(map: &Grid, pos: Point, dir: &Direction) -> (Point, Direction) 
     (next, *dir)
 }
 
+fn pos_to_map(game: &Game, face: usize, pos: &Point) -> Point {
+    let (r, c) = match face {
+        1 => (0,2),
+        2 => (0,1),
+        3 => (1,1),
+        4 => (2,1),
+        5 => (2,0),
+        6 => (3,0),
+        _ => panic!("Bad face"),
+    };
+
+    let (row, col) = pos;
+    (row + game.width * r, col + game.width * c)
+}
 fn next2(game: &Game, face: usize, pos: Point, dir: &Direction) -> Option<(usize, Point, Direction)> {
     // print!(">> {:?} ", (face, pos, dir));
     // let map = &game.faces[face-1];
@@ -523,7 +537,7 @@ fn solve2(input: &'static str) -> i32 {
     }
 
     println!("\n{} {:?} {:?}", face, pos, dir);
-    score(&dir, &pos)
+    score(&dir, &pos_to_map(&game, face, &pos))
 }
 
 fn score(dir: &Direction, pos: &Point) -> i32 {
