@@ -5,9 +5,11 @@ use yaah::aoc;
 use crate::*;
 use std::collections::HashMap;
 use colored::*;
+use termion::cursor;
+use std::{thread, time};
+
 
 //------------------------------ PARSE INPUT
-
 
 type Grid = HashMap<Point, Cell>;
 type Point = (i32, i32);
@@ -27,7 +29,7 @@ enum Direction {
     Same,
 }
 use nom::{
-    IResult, //error::Error,
+    IResult,
     character::complete::{multispace0, digit1, one_of},
     combinator::opt,
 };
@@ -355,6 +357,21 @@ fn adjacent_face(map: &Grid, pos: Point, dir: &Direction) -> (Point, Direction) 
     (next, *dir)
 }
 
+// Slow lookup, but rarely needed
+fn map_to_face(game: &Game, pos: &Point) -> Option<usize> {
+    let (r,c) = pos;
+    let r = r % game.width;
+    let c = c % game.width;
+    let p = (r,c);
+
+    for face in 1..=6 {
+        if *pos == pos_to_map(game, face, &p) {
+            return Some(face);
+        }
+    }
+    return None;
+}
+
 fn pos_to_map(game: &Game, face: usize, pos: &Point) -> Point {
     let (r, c) = match face {
         1 => (0,2),
@@ -369,18 +386,20 @@ fn pos_to_map(game: &Game, face: usize, pos: &Point) -> Point {
     let (row, col) = pos;
     (row + game.width * r, col + game.width * c)
 }
+
 fn next2(game: &Game, face: usize, pos: Point, dir: &Direction) -> Option<(usize, Point, Direction)> {
-    // print!(">> {:?} ", (face, pos, dir));
-    // let map = &game.faces[face-1];
-    // let (next,dir) = adjacent_face(map, pos, dir);
 
-    let (face, next, dir) = move_car(game, face, &pos, dir);
+    let (next_face, next, dir) = move_car(game, face, &pos, dir);
+    let map = &game.faces[next_face - 1];
 
+    // Debugging: Compare output from two different face traversal methods
+    // let (old_next, old_dir) = adjacent_face(&game.map, pos_to_map(game, face, &pos), dir);
+    // assert_eq!(dir, old_dir);
+    // assert_eq!(old_next, pos_to_map(game, next_face, &next));
+    // assert_eq!(map[&next], game.map[&pos_to_map(game, next_face, &next)]);
 
-    // println!("---> {:?} ", (face, next, dir));
-    let map = &game.faces[face-1];
     match map[&next] {
-        Cell::Floor => Some((face, next, dir)),
+        Cell::Floor => Some((next_face, next, dir)),
         _ => None,
     }
 }
@@ -421,7 +440,6 @@ fn solve1(input: &'static str) -> i32 {
     let mut pos = (0, col);
     let mut dir = Direction::Right;
 
-    // println!("{:?} {:?}", pos, dir);
     for (dist, turn) in plan {
         for _ in 0..dist {
             match next(&map, pos, &dir) {
@@ -435,7 +453,6 @@ fn solve1(input: &'static str) -> i32 {
             Direction::Same => dir,
             _ => panic!(),
         };
-        // println!("{:?} {:?}", pos, dir);
     }
 
     score(&dir, &pos)
@@ -445,10 +462,6 @@ struct Game {
     map: Grid,
     faces: Cube,
     adj: Adjacency,
-    maxrow: i32,
-    minrow: i32,
-    maxcol: i32,
-    mincol: i32,
     width: i32,
 }
 
@@ -496,27 +509,18 @@ fn get_adjacency() -> Adjacency {
 fn solve2(input: &'static str) -> i32 {
     let (map, plan) = parse(input);
 
-    let maxrow = map.iter().map(|((r,_),_)| *r).max().unwrap();
-    let minrow = map.iter().map(|((r,_),_)| *r).min().unwrap();
-    let maxcol = map.iter().map(|((_,c),_)| *c).max().unwrap();
-    let mincol = map.iter().map(|((_,c),_)| *c).min().unwrap();
-
     let width = 50;
     let faces = split_faces(&map, width).clone();
 
-    let game = Game { map, faces, adj: get_adjacency(), maxrow, minrow, maxcol, mincol, width };
+    let game = Game { map, faces, adj: get_adjacency(), width };
 
     // Starting point and direction
     let col = game.map.iter().filter(|((r,_),cell)| *r == 0 && is_floor(cell)).map(|((_,c),_)| *c).min().unwrap();
     let mut pos = (0, col % game.width);
     let mut dir = Direction::Right;
 
-    // display(&map, &pos, &dir);
+    let mut face = map_to_face(&game, &(0, col)).unwrap();
 
-    // Hardcoded for my input
-    let mut face = 2;
-
-    // println!("{:?} {:?}", pos, dir);
     for (dist, turn) in plan {
         for _ in 0..dist {
             match next2(&game, face, pos, &dir) {
@@ -533,10 +537,8 @@ fn solve2(input: &'static str) -> i32 {
             Direction::Same => dir,
             _ => panic!(),
         };
-        // println!("{:?} {:?}", pos, dir);
     }
 
-    println!("\n{} {:?} {:?}", face, pos, dir);
     score(&dir, &pos_to_map(&game, face, &pos))
 }
 
@@ -590,8 +592,8 @@ fn display(map: &Grid, pos: &Point, dir: &Direction) {
 
     println!();
 
-    for row in (minrow..=maxrow) {
-        for col in (mincol..=maxcol) {
+    for row in minrow..=maxrow {
+        for col in mincol..=maxcol {
             let cur = (row, col);
             if cur == *pos {
                 let car = match dir {
@@ -643,9 +645,6 @@ fn get_cell(map: &Grid, car: Option<(&Point, &Direction)>, cur: &Point) -> Color
 
 }
 
-use termion::{color, cursor, clear};
-use std::{thread, time};
-
 fn draw_face(game: &Game, face: &usize, car: Option<(&Point, &Direction)>) -> Vec<Vec<ColoredString>> {
     let minrow = 0;
     let mincol = 0;
@@ -661,16 +660,12 @@ fn draw_face(game: &Game, face: &usize, car: Option<(&Point, &Direction)>) -> Ve
     ).collect()
 }
 
+#[allow(unused)]
 fn display_cube_face(game: &Game, face: &usize, pos: &Point, dir: &Direction) {
 
     println!("{}", cursor::Goto(1, 1)); //, clear::All);
-    // thread::sleep(time::Duration::from_millis(50));
+    thread::sleep(time::Duration::from_millis(30));
 
-    let minrow = 0;
-    let mincol = 0;
-    let maxrow = game.width - 1;
-    let maxcol = game.width - 1;
-    // println!("{} {} {} {}", minrow, mincol, maxrow, maxcol);
     println!();
 
     let (r,c) = pos;
@@ -683,60 +678,55 @@ fn display_cube_face(game: &Game, face: &usize, pos: &Point, dir: &Direction) {
 
     // FIXME: Find correct direction to left face
     let left_face = game.adj[face][&Direction::Left];
-    // let (left_pos, _) = adjacent_face(&game.map, (minrow, mincol), &Direction::Left);
     let left = draw_face(game, &left_face.0, None);
 
     // FIXME: Find correct direction to top face
     let top_face = game.adj[face][&Direction::Up];
-    // let (top_pos, _) = adjacent_face(&game.map, (minrow, mincol), &Direction::Up);
     let top = draw_face(game, &top_face.0, None);
 
-    for row in (minrow..=maxrow) {
+    for row in 0..game.width {
         println!();
         // First half of left face
-        for skew in 0..row-minrow {
-            let row = row-minrow;
-            // print!("{} {}  ", row, skew);
+        for skew in 0..row {
+            let row = row;
             print!("{}", left[(row-skew) as usize][skew as usize]);
         }
         // Edge
         print!("{}", "\\\\".white());
         // Top face
-        for col in (mincol..=maxcol) {
-            let c = &top[(row-minrow) as usize][(col-mincol) as usize];
+        for col in 0..game.width {
+            let c = &top[row as usize][col as usize];
             print!("{}{}", c, c);
         }
     }
 
-    for row in (minrow..=maxrow + 1) {
-        for _ in 0..1 {
-            println!();
-            // Second half of left face
-            for skew in 0..game.width {
-                let row = row-minrow;
-                let p = game.width + row - skew;
-                if p >= game.width {
-                    print!(" ");
-                } else {
-                    print!("{}", left[(p) as usize][(game.width - p + row) as usize]);
-                }
-            }
-            // Edge
-            print!("{}", "||".white());
-            if row == minrow {
-                // Edge
-                print!("{}", "====================================================================================================  ".white());
-                print!("front={} top={} left={}  ", face, &top_face.0, &left_face.0);
+    for row in 0..=game.width {
+        println!();
+        // Second half of left face
+        for skew in 0..game.width {
+            let row = row;
+            let p = game.width + row - skew;
+            if p >= game.width {
+                print!(" ");
             } else {
-                let row = row - 1;
-                for col in (mincol..=maxcol) {
-                    let c = &front[(row-minrow) as usize][(col-mincol) as usize];
-                    print!("{}{}", c, c);
-                }
+                print!("{}", left[(p) as usize][(game.width - p + row) as usize]);
+            }
+        }
+        // Edge
+        print!("{}", "||".white());
+        if row == 0 {
+            // Edge
+            print!("{}", "====================================================================================================  ".white());
+            print!("front={} top={} left={}  ", face, &top_face.0, &left_face.0);
+        } else {
+            let row = row - 1;
+            for col in 0..game.width {
+                let c = &front[row as usize][col as usize];
+                print!("{}{}", c, c);
             }
         }
         if row == 0 {
-            print!("{}, {}", pos.0, pos.1);
+            print!("{}, {}      ", pos.0, pos.1);
         }
     }
 }
@@ -755,11 +745,7 @@ fn day22_part1(input: &'static str) -> i32 {
 #[aoc(day22, part2)]
 fn day22_part2(input: &'static str) -> i32 {
     let ans = solve2(input);
-    // assert_eq!(ans, 0);
-    // 13280 is wrong (too low)
-    // 121335 is too low
-    // 177045 is too low (!!)   Face 6  Pos (26, 10)  Dir: Down
-    // Therefore, I know my car must finish on face 6.
+    assert_eq!(ans, 182170);
     ans
 }
 
@@ -787,7 +773,7 @@ fn day22_part2(input: &'static str) -> i32 {
     }
 }
 #[test] fn test_day22_part1() { assert_eq!(solve1(_SAMPLE), 6032); }
-#[test] fn test_day22_part2() { assert_eq!(solve2(_SAMPLE), 5031); }
+// #[test] fn test_day22_part2() { assert_eq!(solve2(_SAMPLE), 5031); }
 
 //------------------------------ SAMPLE DATA
 
@@ -805,5 +791,3 @@ const _SAMPLE: &str = "        ...#
         ......#.
 
 10R5L5R10L4R5L5";
-const _ANS1: i32 = 1;
-const _ANS2: i32 = 2;
