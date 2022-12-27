@@ -1,3 +1,4 @@
+use fnv::FnvHashMap;
 #[allow(unused)]
 use yaah::aoc;
 #[allow(unused)]
@@ -11,12 +12,13 @@ use colored::*;
 type Grid = HashMap<Point, Cell>;
 type Point = (i32, i32);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum Cell {
     Floor,
     Wall,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum Direction {
     Up,
     Down,
@@ -75,6 +77,7 @@ fn parse(input: &'static str) -> (Grid, Vec<(usize, Direction)>) {
     (map, plan)
 }
 
+// Part1 : Wrap around across empty areas
 fn next(map: &Grid, pos: Point, dir: &Direction) -> Option<Point> {
     let (row, col) = pos;
     let maxrow = map.iter().filter(|((_,c),_)| *c == col).map(|((r,_),_)| *r).max().unwrap();
@@ -93,6 +96,74 @@ fn next(map: &Grid, pos: Point, dir: &Direction) -> Option<Point> {
         Cell::Floor => Some(next),
         _ => None,
     }
+}
+
+type Cube = Vec<Grid>;
+fn split_faces(map: &Grid, width: i32) -> Cube {
+    let mut cube = Vec::new();
+    for row in 0.. {
+        let row = row * width as i32;
+        for col in (0..3).rev() {
+            let col = col * width as i32;
+            let face = map
+                .iter()
+                .filter(|((r,c),_)| *r >= row && *r < row + width && *c >= col && *c < col + width )
+                .map(|((r,c), f)| ((*r-row, *c-col), *f) )
+                .collect::<Grid>();
+            match face.len() {
+                2500 => cube.push(face),
+                0 => {}, // no face, no biggie
+                _ => panic!("Unexpected face size: {}", face.len()),
+            }
+            if cube.len() == 6 {
+                return cube;
+            }
+        }
+    }
+    unreachable!();
+}
+
+fn move_car(game: &Game, face: usize, pos: &Point, dir: &Direction) -> (usize, Point, Direction) {
+    let (row, col) = pos;
+
+    let mut row = *row;
+    let mut col = *col;
+    let mut dir = *dir;
+    let mut face = face;
+
+    match dir {
+        Direction::Up => row -= 1,
+        Direction::Down => row += 1,
+        Direction::Left => col -= 1,
+        Direction::Right => col += 1,
+        Direction::Same => panic!(),
+    };
+
+    if row < 0 || row >= game.width || col < 0 || col >= game.width {
+        // Walked off the edge.  Pick a new face.
+        let (f, rotation) = game.adj[&face][&dir];
+
+        row = (row + game.width) % game.width;
+        col = (col + game.width) % game.width;
+        face = f;
+        let max_pos = game.width - 1;
+        match rotation {
+            0   => {},
+            90  => { let tmp = row; row = col; col = max_pos - tmp; }             // 2,20 => 20,48
+            180 => { let tmp = row; row = max_pos - col; col = max_pos - tmp; }     // 2,20 => 48,30
+            -90 => { let tmp = row; row = max_pos - col; col = tmp; }     // 2,20 => 48,2
+            _ => panic!("Bad rotation: {}", rotation),
+        }
+        match rotation {
+            0   => {},
+            90  => { dir = turn_left(dir); },
+            180 => { dir = turn_left(dir); dir = turn_left(dir); },
+            -90 => { dir = turn_right(dir)},
+            _ => panic!("Bad rotation: {}", rotation),
+        }
+    }
+    let next = (row, col);
+    (face, next, dir)
 }
 
 // FIXME: Rename to something that indicates it advances pos in direction
@@ -155,6 +226,15 @@ fn adjacent_face(map: &Grid, pos: Point, dir: &Direction) -> (Point, Direction) 
         // left-turns (to head Right) on F5.  Why left turns and how do we
         // decide to rotate twice to reach our common edge on F5?
         // I suppose I can map it all by hand.  Blast!
+
+        //     Up        Left        Right        Down
+        //  1  6 0       2 0         4 180        3 -90
+        //  2  6 90      5 180       1 0          3 0
+        //  3  2 0       5 90        1 90         4 0
+        //  4  3 0       5 0         1 180        6 -90
+        //  5  3 -90     2 180       4 0          6 0
+        //  6  5 0       2 -90       4 90         1 0
+        //
 
         match dir {
             Direction::Same => panic!(),
@@ -275,11 +355,18 @@ fn adjacent_face(map: &Grid, pos: Point, dir: &Direction) -> (Point, Direction) 
     (next, *dir)
 }
 
-fn next2(map: &Grid, pos: Point, dir: &Direction) -> Option<(Point, Direction)> {
-    let (next,dir) = adjacent_face(map, pos, dir);
+fn next2(game: &Game, face: usize, pos: Point, dir: &Direction) -> Option<(usize, Point, Direction)> {
+    // print!(">> {:?} ", (face, pos, dir));
+    // let map = &game.faces[face-1];
+    // let (next,dir) = adjacent_face(map, pos, dir);
 
+    let (face, next, dir) = move_car(game, face, &pos, dir);
+
+
+    // println!("---> {:?} ", (face, next, dir));
+    let map = &game.faces[face-1];
     match map[&next] {
-        Cell::Floor => Some((next, dir)),
+        Cell::Floor => Some((face, next, dir)),
         _ => None,
     }
 }
@@ -342,11 +429,54 @@ fn solve1(input: &'static str) -> i32 {
 
 struct Game {
     map: Grid,
+    faces: Cube,
+    adj: Adjacency,
     maxrow: i32,
     minrow: i32,
     maxcol: i32,
     mincol: i32,
     width: i32,
+}
+
+type Adjacency = FnvHashMap<usize, FnvHashMap<Direction, (usize, i32)>>;
+
+fn get_adjacency() -> Adjacency {
+    const ADJACENT:[[(usize, i32); 4]; 6] = [
+        [ (6, 0), (2, 0), (  4, 180), ( 3, -90)],
+        [ (6, -90),  (5,  180),  (1, 0),  (3, 0)],
+        [ (2, 0),   (5,  90 ),  (1, 90),  (4, 0)],
+        [ (3, 0),   (5,  0  ),  (1, 180),  (6, -90)],
+        [ (3, -90), (2,  180),  (4, 0),  (6, 0)],
+        [ (5, 0),   (2,  90 ),  (4, 90),  (1, 0)],
+        ];
+
+    let mut amap: Adjacency = FnvHashMap::default();
+
+    //     Up        Left        Right        Down
+    //  1  6 0       2 0         4 180        3 -90
+    //  2  6 -90     5 180       1 0          3 0
+    //  3  2 0       5 90        1 90         4 0
+    //  4  3 0       5 0         1 180        6 -90
+    //  5  3 -90     2 180       4 0          6 0
+    //  6  5 0       2 90        4 90         1 0
+    //
+
+    for (f, map) in ADJACENT.iter().enumerate() {
+        let f = f + 1; // 1-based face numbers
+        let mut mm = FnvHashMap::default();
+        for (d, path) in map.iter().enumerate() {
+            let d = match d {
+                0 => Direction::Up,
+                1 => Direction::Left,
+                2 => Direction::Right,
+                3 => Direction::Down,
+                _ => unreachable!(),
+            };
+            mm.insert(d, *path);
+        }
+        amap.insert(f, mm);
+    }
+    amap
 }
 
 fn solve2(input: &'static str) -> i32 {
@@ -358,22 +488,27 @@ fn solve2(input: &'static str) -> i32 {
     let mincol = map.iter().map(|((_,c),_)| *c).min().unwrap();
 
     let width = 50;
+    let faces = split_faces(&map, width).clone();
 
-    let game = Game { map, maxrow, minrow, maxcol, mincol, width };
+    let game = Game { map, faces, adj: get_adjacency(), maxrow, minrow, maxcol, mincol, width };
 
+    // Starting point and direction
     let col = game.map.iter().filter(|((r,_),cell)| *r == 0 && is_floor(cell)).map(|((_,c),_)| *c).min().unwrap();
-    let mut pos = (0, col);
+    let mut pos = (0, col % game.width);
     let mut dir = Direction::Right;
 
     // display(&map, &pos, &dir);
 
+    // Hardcoded for my input
+    let mut face = 2;
+
     // println!("{:?} {:?}", pos, dir);
     for (dist, turn) in plan {
         for _ in 0..dist {
-            match next2(&game.map, pos, &dir) {
-                Some((p, d)) => {
-                    pos = p; dir = d;
-                    display_cube_face(&game, &pos, &dir);
+            match next2(&game, face, pos, &dir) {
+                Some((f, p, d)) => {
+                    face = f; pos = p; dir = d;
+                    // display_cube_face(&game, &face, &pos, &dir);
                 },
                 None => {},
             };
@@ -387,6 +522,7 @@ fn solve2(input: &'static str) -> i32 {
         // println!("{:?} {:?}", pos, dir);
     }
 
+    println!("\n{} {:?} {:?}", face, pos, dir);
     score(&dir, &pos)
 }
 
@@ -469,17 +605,20 @@ fn display(map: &Grid, pos: &Point, dir: &Direction) {
     }
 }
 
-fn get_cell(map: &Grid, pos: &Point, dir: &Direction, cur: &Point) -> ColoredString {
-    if *cur == *pos {
-        let car = match dir {
-                Direction::Right => ">",
-                Direction::Down => "V",
-                Direction::Left => "<",
-                Direction::Up => "^",
-                Direction::Same => panic!(),
-        };
-        car.bright_yellow()
-    } else if map.contains_key(&cur) {
+fn get_cell(map: &Grid, car: Option<(&Point, &Direction)>, cur: &Point) -> ColoredString {
+    if let Some((pos, dir)) = car {
+        if *cur == *pos {
+            let car = match dir {
+                    Direction::Right => ">",
+                    Direction::Down => "V",
+                    Direction::Left => "<",
+                    Direction::Up => "^",
+                    Direction::Same => panic!(),
+            };
+            return car.bright_yellow();
+        }
+    }
+    if map.contains_key(&cur) {
         match map[&cur] {
             Cell::Floor => ".".green(),
             Cell::Wall => "#".red(),
@@ -493,49 +632,50 @@ fn get_cell(map: &Grid, pos: &Point, dir: &Direction, cur: &Point) -> ColoredStr
 use termion::{color, cursor, clear};
 use std::{thread, time};
 
-fn draw_face(game: &Game, pos: &Point, dir: &Direction) -> Vec<Vec<ColoredString>> {
-    let minrow = (pos.0 / game.width) * game.width;
-    let mincol = (pos.1 / game.width) * game.width;
-    let maxrow = minrow + game.width - 1;
-    let maxcol = mincol + game.width - 1;
+fn draw_face(game: &Game, face: &usize, car: Option<(&Point, &Direction)>) -> Vec<Vec<ColoredString>> {
+    let minrow = 0;
+    let mincol = 0;
+    let maxrow = game.width - 1;
+    let maxcol = game.width - 1;
 
-    let pos = match dir {
-        Direction::Same => &(0, 0),
-        _ => pos,
-    };
-
+    let map = &game.faces[face-1];
     (minrow..=maxrow).map(|row|
         (mincol..=maxcol).map(|col| {
             let cur = (row, col);
-            get_cell(&game.map, pos, dir, &cur)
+            get_cell(map, car, &cur)
         }).collect::<Vec<_>>()
     ).collect()
 }
 
-fn display_cube_face(game: &Game, pos: &Point, dir: &Direction) {
+fn display_cube_face(game: &Game, face: &usize, pos: &Point, dir: &Direction) {
 
     println!("{}", cursor::Goto(1, 1)); //, clear::All);
-    thread::sleep(time::Duration::from_millis(50));
+    // thread::sleep(time::Duration::from_millis(50));
 
-    let minrow = (pos.0 / game.width) * game.width;
-    let mincol = (pos.1 / game.width) * game.width;
-    let maxrow = minrow + game.width - 1;
-    let maxcol = mincol + game.width - 1;
+    let minrow = 0;
+    let mincol = 0;
+    let maxrow = game.width - 1;
+    let maxcol = game.width - 1;
     // println!("{} {} {} {}", minrow, mincol, maxrow, maxcol);
     println!();
 
-    let front = draw_face(game, pos, dir);
+    let (r,c) = pos;
+    let pos = &(r % game.width, c % game.width);
+
+    let front = draw_face(game, face, Some((pos, dir)));
     // FIXME: Rotate front face to match expected orientation
 
     // FIXME: Show recent path trail to indicate where we came from
 
     // FIXME: Find correct direction to left face
-    let (left_pos, _) = adjacent_face(&game.map, (minrow, mincol), &Direction::Left);
-    let left = draw_face(game, &left_pos, &Direction::Same);
+    let left_face = game.adj[face][&Direction::Left];
+    // let (left_pos, _) = adjacent_face(&game.map, (minrow, mincol), &Direction::Left);
+    let left = draw_face(game, &left_face.0, None);
 
     // FIXME: Find correct direction to top face
-    let (top_pos, _) = adjacent_face(&game.map, (minrow, mincol), &Direction::Up);
-    let top = draw_face(game, &top_pos, &Direction::Same);
+    let top_face = game.adj[face][&Direction::Up];
+    // let (top_pos, _) = adjacent_face(&game.map, (minrow, mincol), &Direction::Up);
+    let top = draw_face(game, &top_face.0, None);
 
     for row in (minrow..=maxrow) {
         println!();
@@ -572,6 +712,7 @@ fn display_cube_face(game: &Game, pos: &Point, dir: &Direction) {
             if row == minrow {
                 // Edge
                 print!("{}", "====================================================================================================  ".white());
+                print!("front={} top={} left={}  ", face, &top_face.0, &left_face.0);
             } else {
                 let row = row - 1;
                 for col in (mincol..=maxcol) {
@@ -603,11 +744,34 @@ fn day22_part2(input: &'static str) -> i32 {
     // assert_eq!(ans, 0);
     // 13280 is wrong (too low)
     // 121335 is too low
+    // 177045 is too low (!!)   Face 6  Pos (26, 10)  Dir: Down
+    // Therefore, I know my car must finish on face 6.
     ans
 }
 
 //------------------------------ TESTS
 
+#[test] fn map_makes_sense() {
+
+    let amap = get_adjacency();
+
+    for face in 1..=6 {
+        for (dir, (target, rotate)) in amap[&face].iter() {
+            let rotate = (rotate + 180) % 360;
+            let mut odir = *dir;
+            for _ in 0..rotate/90 {
+                odir = turn_left(odir);
+            }
+
+            // dbg!((face, dir, target, odir));
+
+            let (src, src_rotate) = amap[target][&odir];
+            assert_eq!(src, face);
+            let src_rotate = (180 + 360 - src_rotate) % 360;
+            assert_eq!(rotate, src_rotate);
+        }
+    }
+}
 #[test] fn test_day22_part1() { assert_eq!(solve1(_SAMPLE), 6032); }
 #[test] fn test_day22_part2() { assert_eq!(solve2(_SAMPLE), 5031); }
 
